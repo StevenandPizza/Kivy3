@@ -1,200 +1,553 @@
-import random
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
+from kivymd.app import MDApp
+from kivymd.uix.screen import MDScreen
 from kivy.lang import Builder
 from kivy.core.window import Window
-from kivy.metrics import dp, sp
+from kivy.metrics import dp
+from kivy.clock import Clock
+from kivy.animation import Animation
+from kivy.uix.floatlayout import FloatLayout
+from kivy.properties import NumericProperty
+from kivy.graphics import Color, Ellipse, PushMatrix, PopMatrix, Rotate
+from kivy.uix.label import Label
+import math
+import random
 from kivy.utils import platform
 
-# Chỉnh kích thước cửa sổ giả lập giống màn hình điện thoại (Chỉ có tác dụng trên máy tính)
-# Chỉnh kích thước cửa sổ giả lập (Chỉ có tác dụng trên máy tính)
+# Chỉnh kích thước giả lập trên PC
 if platform not in ('android', 'ios'):
     Window.size = (400, 700)
 
-# KV Language: Giao diện sạch sẽ và tách biệt
-KV = '''
-<RandomAppWidget>:
-    orientation: 'vertical'
-    padding: dp(20)
-    spacing: dp(15)
+try:
+    from plyer import vibrator
+except ImportError:
+    vibrator = None
+
+# ==========================================
+# CLASS HỖ TRỢ: CHỮ NGHIÊNG THEO VÒNG QUAY
+# ==========================================
+class RotatedLabel(Label):
+    angle = NumericProperty(0)
     
-    # Đổ màu nền cho toàn bộ app (Màu xám nhạt hiện đại)
-    canvas.before:
-        Color:
-            rgba: 0.96, 0.97, 0.98, 1  
-        Rectangle:
-            pos: self.pos
-            size: self.size
-
-    # --- TIÊU ĐỀ ---
-    Label:
-        text: 'RANDOM CÙNG STEVEN'
-        font_size: sp(26)
-        bold: True
-        color: 0.17, 0.24, 0.31, 1
-        size_hint_y: None
-        height: dp(40)
-
-    # --- KHU VỰC NHẬP SỐ LỚN NHẤT ---
-    BoxLayout:
-        size_hint_y: None
-        height: dp(50)
-        spacing: dp(10)
-        
-        TextInput:
-            id: max_input
-            hint_text: 'Nhập số...'
-            input_filter: 'int'
-            multiline: False
-            font_size: sp(18)
-            halign: 'center'
-            padding_y: [self.height / 2.0 - (self.line_height / 2.0) * len(self._lines), 0]
-            
-        Button:
-            text: 'Thiết Lập'
-            size_hint_x: 0.5
-            background_normal: ''
-            background_color: 0.2, 0.6, 0.86, 1
-            bold: True
-            on_release: root.setup_numbers()
-
-    # --- KHU VỰC HIỂN THỊ KẾT QUẢ ---
-    BoxLayout:
-        orientation: 'vertical'
-        canvas.before:
-            Color:
-                rgba: 1, 1, 1, 1
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [15,]
-        
-        Label:
-            id: result_label
-            text: '?'
-            font_size: sp(90)
-            bold: True
-            color: 0.66, 0.33, 0.97, 1
-            
-        Label:
-            id: status_label
-            text: 'Sẵn sàng...'
-            font_size: sp(14)
-            color: 0.5, 0.5, 0.5, 1
-            size_hint_y: None
-            height: dp(40)
-
-    # --- NÚT QUAY SỐ ---
-    Button:
-        id: draw_btn
-        text: 'QUAY SỐ NGAY'
-        size_hint_y: None
-        height: dp(65)
-        background_normal: ''
-        background_color: 0.18, 0.8, 0.44, 1
-        font_size: sp(20)
-        bold: True
-        disabled: True
-        on_release: root.draw_number()
-
-    # --- LỊCH SỬ CÁC SỐ ĐÃ RÚT ---
-    BoxLayout:
-        orientation: 'vertical'
-        size_hint_y: 0.6
-        canvas.before:
-            Color:
-                rgba: 1, 1, 1, 1
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [10,]
-        padding: dp(15)
-        
-        Label:
-            text: 'Lịch sử đã quay:'
-            color: 0.17, 0.24, 0.31, 1
-            bold: True
-            size_hint_y: None
-            height: dp(30)
-            text_size: self.size
-            halign: 'left'
-            
-        ScrollView:
-            Label:
-                id: history_label
-                text: 'Chưa có lịch sử...'
-                color: 0.3, 0.3, 0.3, 1
-                text_size: self.width, None
-                size_hint_y: None
-                height: self.texture_size[1]
-                halign: 'left'
-                valign: 'top'
-
-    # --- NÚT LÀM MỚI ---
-    Button:
-        text: 'Tạo Lại Dãy Số Mới'
-        size_hint_y: None
-        height: dp(50)
-        background_normal: ''
-        background_color: 0.9, 0.49, 0.13, 1
-        bold: True
-        on_release: root.reset_app()
-'''
-
-class RandomAppWidget(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.available_numbers = []
-        self.drawn_numbers = []
-
-    def setup_numbers(self):
-        val = self.ids.max_input.text
-        if val and val.isdigit() and int(val) > 0:
-            max_val = int(val)
-            self.available_numbers = list(range(1, max_val + 1))
-            self.drawn_numbers = []
+        self.size_hint = (None, None)
+        self.size = (dp(80), dp(40))
+        self.halign = 'center'
+        self.valign = 'middle'
+        self.bind(size=self.setter('text_size'))
+        
+        with self.canvas.before:
+            PushMatrix()
+            self.rot = Rotate(angle=0, origin=self.center)
+        with self.canvas.after:
+            PopMatrix()
             
-            # Cập nhật Giao diện
-            self.ids.result_label.text = "?"
-            self.ids.history_label.text = "Chưa có lịch sử..."
-            self.ids.status_label.text = f"Đã tạo 1 đến {max_val}. Còn lại: {len(self.available_numbers)}"
-            self.ids.draw_btn.disabled = False 
+        self.bind(center=self.update_transform, angle=self.update_transform)
+        
+    def update_transform(self, *args):
+        if hasattr(self, 'rot'):
+            self.rot.origin = self.center
+            self.rot.angle = self.angle
 
-    def draw_number(self):
-        if not self.available_numbers:
+# ==========================================
+# CLASS ĐỒ HỌA: VÒNG QUAY
+# ==========================================
+# ==========================================
+# CLASS ĐỒ HỌA: VÒNG QUAY (ĐÃ FIX CHUẨN TÂM CHỮ)
+# ==========================================
+class RouletteGraphic(FloatLayout):
+    spin_angle = NumericProperty(0)
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.items = []
+        self.bind(spin_angle=self.update_wheel_rotation, pos=self.redraw, size=self.redraw)
+        
+    def redraw(self, *args):
+        self.draw_wheel(self.items)
+
+    def draw_wheel(self, items):
+        self.items = items
+        self.canvas.before.clear()
+        self.canvas.after.clear()
+        self.clear_widgets()
+        
+        if not items: return
+        
+        N = len(items)
+        A = 360.0 / N
+        colors = [(0.9, 0.3, 0.3, 1), (0.2, 0.6, 0.8, 1), (0.9, 0.7, 0.1, 1), 
+                  (0.2, 0.7, 0.4, 1), (0.6, 0.3, 0.7, 1), (0.9, 0.5, 0.2, 1)]
+                  
+        with self.canvas.before:
+            PushMatrix()
+            self.rot = Rotate(angle=self.spin_angle, origin=self.center)
+            
+            for i in range(N):
+                color_idx = i % len(colors)
+                if i == N - 1 and color_idx == 0 and N > 1:
+                    color_idx = 1
+                    
+                Color(*colors[color_idx])
+                Ellipse(pos=self.pos, size=self.size, angle_start=i*A, angle_end=(i+1)*A)
+                
+        with self.canvas.after:
+            PopMatrix()
+            
+        for i, item in enumerate(items):
+            # Góc của lát bánh (tính theo Kivy Ellipse)
+            kivy_angle = i * A + (A / 2)
+            
+            # BÍ KÍP Ở ĐÂY: Quy đổi hệ trục toạ độ!
+            # Kivy Ellipse (12h, thuận kim đồng hồ) -> Toán học (3h, ngược kim đồng hồ)
+            math_angle = 90 - kivy_angle
+            rad = math.radians(math_angle)
+            
+            r = min(self.width, self.height) * 0.35
+            cx = self.center_x + r * math.cos(rad)
+            cy = self.center_y + r * math.sin(rad)
+            
+            text_str = str(item)
+            short_text = text_str[:6] + ".." if len(text_str) > 7 else text_str
+            dynamic_font_size = '16sp' if N <= 8 else '12sp'
+            
+            # Đưa math_angle vào để chữ hướng đúng chuẩn ra rìa
+            lbl = RotatedLabel(text=short_text, font_size=dynamic_font_size, bold=True, angle=math_angle)
+            lbl.center = (cx, cy)
+            self.add_widget(lbl)
+
+    def update_wheel_rotation(self, *args):
+        if hasattr(self, 'rot'):
+            self.rot.angle = self.spin_angle
+            self.rot.origin = self.center
+# ==========================================
+# GIAO DIỆN KV NGÔN NGỮ (FULL 4 TABS)
+# ==========================================
+KV = '''
+MDScreen:
+    md_bg_color: 0.96, 0.97, 0.98, 1
+
+    MDBottomNavigation:
+        panel_color: 1, 1, 1, 1
+        selected_color_background: app.theme_cls.primary_color
+        text_color_active: app.theme_cls.primary_color
+
+        # ------------------------------------------
+        # TAB 1: NUMBERS
+        # ------------------------------------------
+        MDBottomNavigationItem:
+            name: 'tab_number'
+            text: 'Numbers'
+            icon: 'numeric'
+            MDBoxLayout:
+                orientation: 'vertical'
+                padding: dp(20)
+                spacing: dp(15)
+                MDLabel:
+                    text: 'LUCKY NUMBERS'
+                    font_style: 'H5'
+                    bold: True
+                    theme_text_color: 'Primary'
+                    halign: 'center'
+                    size_hint_y: None
+                    height: dp(30)
+                MDBoxLayout:
+                    size_hint_y: None
+                    height: dp(60)
+                    spacing: dp(10)
+                    MDTextField:
+                        id: max_input
+                        hint_text: 'Enter max number...'
+                        input_filter: 'int'
+                        halign: 'center'
+                    MDRaisedButton:
+                        text: 'SET UP'
+                        size_hint_y: 1
+                        on_release: app.setup_numbers()
+                MDCard:
+                    orientation: 'vertical'
+                    padding: dp(10)
+                    radius: [15, 15, 15, 15]
+                    elevation: 2
+                    MDLabel:
+                        id: result_label
+                        text: '?'
+                        font_style: 'H1'
+                        halign: 'center'
+                        theme_text_color: 'Custom'
+                        text_color: app.theme_cls.primary_color
+                        bold: True
+                    MDLabel:
+                        id: status_label
+                        text: 'Ready...'
+                        halign: 'center'
+                        theme_text_color: 'Secondary'
+                        size_hint_y: None
+                        height: dp(30)
+                MDFillRoundFlatButton:
+                    id: draw_btn
+                    text: 'DRAW NOW'
+                    size_hint_x: 1
+                    size_hint_y: None
+                    height: dp(50)
+                    disabled: True
+                    on_release: app.start_draw_animation('number')
+                MDCard:
+                    padding: dp(15)
+                    radius: [10, 10, 10, 10]
+                    elevation: 1
+                    size_hint_y: 0.6
+                    ScrollView:
+                        MDLabel:
+                            id: history_label
+                            text: 'No history yet...'
+                            size_hint_y: None
+                            height: self.texture_size[1]
+                            text_size: self.width, None
+
+        # ------------------------------------------
+        # TAB 2: NAMES
+        # ------------------------------------------
+        MDBottomNavigationItem:
+            name: 'tab_name'
+            text: 'Names'
+            icon: 'account-star'
+            MDBoxLayout:
+                orientation: 'vertical'
+                padding: dp(20)
+                spacing: dp(15)
+                MDLabel:
+                    text: 'RANDOM PICKER'
+                    font_style: 'H5'
+                    bold: True
+                    theme_text_color: 'Custom'
+                    text_color: 0.66, 0.33, 0.97, 1
+                    halign: 'center'
+                    size_hint_y: None
+                    height: dp(30)
+                MDTextField:
+                    id: names_input
+                    hint_text: 'Enter names (one per line)'
+                    mode: "rectangle"
+                    multiline: True
+                    size_hint_y: 0.4
+                MDRaisedButton:
+                    text: 'LOAD LIST'
+                    size_hint_x: 1
+                    md_bg_color: 0.66, 0.33, 0.97, 1
+                    on_release: app.setup_names()
+                MDCard:
+                    orientation: 'vertical'
+                    padding: dp(10)
+                    radius: [15, 15, 15, 15]
+                    elevation: 2
+                    size_hint_y: 0.4
+                    MDLabel:
+                        id: name_result_label
+                        text: 'Who is next?'
+                        font_style: 'H4'
+                        halign: 'center'
+                        theme_text_color: 'Custom'
+                        text_color: 0.66, 0.33, 0.97, 1
+                        bold: True
+                    MDLabel:
+                        id: name_status_label
+                        text: 'Waiting for names...'
+                        halign: 'center'
+                        size_hint_y: None
+                        height: dp(30)
+                MDFillRoundFlatButton:
+                    id: name_draw_btn
+                    text: 'PICK SOMEONE'
+                    size_hint_x: 1
+                    size_hint_y: None
+                    height: dp(50)
+                    disabled: True
+                    md_bg_color: 0.66, 0.33, 0.97, 1
+                    on_release: app.start_draw_animation('name')
+
+        # ------------------------------------------
+        # TAB 3: ROULETTE WHEEL
+        # ------------------------------------------
+        MDBottomNavigationItem:
+            name: 'tab_wheel'
+            text: 'Wheel'
+            icon: 'sync-circle'
+
+            MDBoxLayout:
+                orientation: 'vertical'
+                padding: dp(20)
+                spacing: dp(10)
+
+                MDLabel:
+                    text: 'SPIN THE WHEEL'
+                    font_style: 'H5'
+                    bold: True
+                    theme_text_color: 'Custom'
+                    text_color: 0.18, 0.8, 0.44, 1 
+                    halign: 'center'
+                    size_hint_y: None
+                    height: dp(30)
+
+                MDTextField:
+                    id: wheel_input
+                    hint_text: 'Enter items (one per line)...'
+                    mode: "rectangle"
+                    multiline: True
+                    size_hint_y: 0.3
+
+                MDFloatLayout:
+                    size_hint_y: 0.5
+                    
+                    RouletteGraphic:
+                        id: graphic_wheel
+                        size_hint: None, None
+                        size: dp(240), dp(240)
+                        pos_hint: {"center_x": .5, "center_y": .5}
+                        
+                    MDIcon:
+                        icon: "menu-down"
+                        font_size: "60sp"
+                        theme_text_color: "Custom"
+                        text_color: 0.1, 0.1, 0.1, 1
+                        pos_hint: {"center_x": .5, "center_y": .95}
+
+                MDLabel:
+                    id: wheel_result_label
+                    text: 'TAP SPIN'
+                    font_style: 'H4'
+                    halign: 'center'
+                    theme_text_color: 'Custom'
+                    text_color: 0.18, 0.8, 0.44, 1
+                    bold: True
+                    size_hint_y: None
+                    height: dp(40)
+
+                MDFillRoundFlatButton:
+                    id: wheel_btn
+                    text: 'SPIN NOW!'
+                    font_size: '22sp'
+                    size_hint_x: 1
+                    size_hint_y: None
+                    height: dp(60)
+                    md_bg_color: 0.18, 0.8, 0.44, 1
+                    on_release: app.start_wheel()
+
+        # ------------------------------------------
+        # TAB 4: TEAMS
+        # ------------------------------------------
+        MDBottomNavigationItem:
+            name: 'tab_team'
+            text: 'Teams'
+            icon: 'account-group'
+            MDBoxLayout:
+                orientation: 'vertical'
+                padding: dp(20)
+                spacing: dp(15)
+                MDLabel:
+                    text: 'TEAM SPLITTER'
+                    font_style: 'H5'
+                    bold: True
+                    theme_text_color: 'Custom'
+                    text_color: 0.9, 0.49, 0.13, 1
+                    halign: 'center'
+                    size_hint_y: None
+                    height: dp(30)
+                MDTextField:
+                    id: team_names_input
+                    hint_text: 'Enter player names...'
+                    mode: "rectangle"
+                    multiline: True
+                    size_hint_y: 0.4
+                MDBoxLayout:
+                    size_hint_y: None
+                    height: dp(60)
+                    spacing: dp(10)
+                    MDTextField:
+                        id: team_count_input
+                        hint_text: 'Number of teams'
+                        input_filter: 'int'
+                        halign: 'center'
+                    MDFillRoundFlatButton:
+                        text: 'SPLIT'
+                        size_hint_y: 1
+                        md_bg_color: 0.9, 0.49, 0.13, 1
+                        on_release: app.split_teams()
+                MDCard:
+                    padding: dp(15)
+                    radius: [10,]
+                    elevation: 1
+                    size_hint_y: 0.6
+                    ScrollView:
+                        MDLabel:
+                            id: team_result_label
+                            text: 'Results will appear here...'
+                            size_hint_y: None
+                            height: self.texture_size[1]
+                            text_size: self.width, None
+'''
+
+class StevenRandomApp(MDApp):
+    available_numbers = []
+    drawn_numbers = []
+    available_names = []
+    wheel_items = []
+    
+    animation_ticks = 0
+    final_chosen = None
+    current_mode = 'number'
+
+    def build(self):
+        self.theme_cls.primary_palette = "Blue"
+        self.theme_cls.theme_style = "Light"
+        return Builder.load_string(KV)
+
+    # --- TAB NUMBERS ---
+    def setup_numbers(self):
+        val = self.root.ids.max_input.text
+        if val and val.isdigit() and int(val) > 0:
+            self.available_numbers = list(range(1, int(val) + 1))
+            self.drawn_numbers = []
+            self.root.ids.result_label.text = "?"
+            self.root.ids.history_label.text = "No history yet..."
+            self.root.ids.status_label.text = f"Created 1 to {val}. Remaining: {len(self.available_numbers)}"
+            self.root.ids.draw_btn.disabled = False
+
+    # --- TAB NAMES ---
+    def setup_names(self):
+        raw_text = self.root.ids.names_input.text
+        names_list = [n.strip() for n in raw_text.split('\n') if n.strip()]
+        if names_list:
+            self.available_names = names_list
+            self.root.ids.name_result_label.text = "Ready!"
+            self.root.ids.name_status_label.text = f"Loaded {len(self.available_names)} names."
+            self.root.ids.name_draw_btn.disabled = False
+
+    # --- ANIMATION ---
+    def start_draw_animation(self, mode):
+        self.current_mode = mode
+        if mode == 'number':
+            if not self.available_numbers: return
+            self.root.ids.draw_btn.disabled = True
+            self.root.ids.draw_btn.text = "DRAWING..."
+            self.final_chosen = random.choice(self.available_numbers)
+        elif mode == 'name':
+            if not self.available_names: return
+            self.root.ids.name_draw_btn.disabled = True
+            self.root.ids.name_draw_btn.text = "SEARCHING..."
+            self.final_chosen = random.choice(self.available_names)
+
+        self.animation_ticks = 0
+        Clock.schedule_interval(self._animate_values, 0.05)
+
+    def _animate_values(self, dt):
+        self.animation_ticks += 1
+        if self.current_mode == 'number':
+            self.root.ids.result_label.text = str(random.choice(self.available_numbers))
+        else:
+            self.root.ids.name_result_label.text = random.choice(self.available_names)
+        
+        if vibrator and self.animation_ticks % 2 == 0:
+            try: vibrator.vibrate(0.01)
+            except: pass
+                
+        if self.animation_ticks >= 20:
+            Clock.unschedule(self._animate_values)
+            self._finish_draw()
+
+    def _finish_draw(self):
+        if self.current_mode == 'number':
+            chosen = self.final_chosen
+            self.available_numbers.remove(chosen)
+            self.drawn_numbers.append(chosen)
+            self.root.ids.result_label.text = str(chosen)
+            self.root.ids.status_label.text = f"Drawn: {chosen}. Remaining: {len(self.available_numbers)}"
+            self.root.ids.draw_btn.text = "DRAW NOW"
+            self.root.ids.history_label.text = ", ".join(map(str, reversed(self.drawn_numbers)))
+            if self.available_numbers: self.root.ids.draw_btn.disabled = False
+            else: self.root.ids.status_label.text = "All numbers drawn!"
+            
+        elif self.current_mode == 'name':
+            chosen = self.final_chosen
+            self.available_names.remove(chosen)
+            self.root.ids.name_result_label.text = str(chosen)
+            self.root.ids.name_status_label.text = f"Picked: {chosen}. Remaining: {len(self.available_names)}"
+            self.root.ids.name_draw_btn.text = "PICK SOMEONE"
+            self.root.ids.names_input.text = "\n".join(self.available_names)
+            if self.available_names: self.root.ids.name_draw_btn.disabled = False
+            else: self.root.ids.name_status_label.text = "Everyone has been picked!"
+
+        if vibrator:
+            try: vibrator.vibrate(0.3)
+            except: pass
+
+    # --- TAB TEAMS ---
+    def split_teams(self):
+        raw_text = self.root.ids.team_names_input.text
+        names_list = [n.strip() for n in raw_text.split('\n') if n.strip()]
+        team_count_str = self.root.ids.team_count_input.text
+        
+        if not names_list or not team_count_str or int(team_count_str) < 1:
+            self.root.ids.team_result_label.text = "Error: Invalid input!"
             return
             
-        # Quay số ngẫu nhiên
-        chosen = random.choice(self.available_numbers)
-        self.available_numbers.remove(chosen)
-        self.drawn_numbers.append(chosen)
-        
-        # Cập nhật Giao diện
-        self.ids.result_label.text = str(chosen)
-        self.ids.status_label.text = f"Số vừa rút: {chosen}. Còn lại: {len(self.available_numbers)}"
-        
-        # Nối chuỗi lịch sử (Số mới nhất lên đầu)
-        history_str = ", ".join(map(str, reversed(self.drawn_numbers)))
-        self.ids.history_label.text = history_str
-        
-        # Khóa nút nếu hết số
-        if not self.available_numbers:
-            self.ids.draw_btn.disabled = True
-            self.ids.status_label.text = "Đã quay hết các số!"
+        team_count = int(team_count_str)
+        if team_count > len(names_list):
+            self.root.ids.team_result_label.text = "Error: Teams > Players!"
+            return
+            
+        random.shuffle(names_list)
+        teams = {i: [] for i in range(team_count)}
+        for index, name in enumerate(names_list):
+            teams[index % team_count].append(name)
+            
+        result_text = ""
+        for i in range(team_count):
+            result_text += f"[b]TEAM {i+1} ({len(teams[i])} players):[/b]\n"
+            result_text += " • " + "\n • ".join(teams[i]) + "\n\n"
+            
+        self.root.ids.team_result_label.markup = True
+        self.root.ids.team_result_label.text = result_text
+        if vibrator:
+            try: vibrator.vibrate(0.2)
+            except: pass
 
-    def reset_app(self):
-        self.ids.max_input.text = ''
-        self.available_numbers = []
-        self.drawn_numbers = []
-        self.ids.result_label.text = "?"
-        self.ids.status_label.text = "Sẵn sàng..."
-        self.ids.history_label.text = "Chưa có lịch sử..."
-        self.ids.draw_btn.disabled = True
-
-class RandomApp(App):
-    def build(self):
-        Builder.load_string(KV)
-        return RandomAppWidget()
+    # --- LOGIC VÒNG QUAY ĐỒ HỌA ---
+    def start_wheel(self):
+        raw_text = self.root.ids.wheel_input.text
+        self.wheel_items = [n.strip() for n in raw_text.split('\n') if n.strip()]
+        
+        if len(self.wheel_items) < 2:
+            self.root.ids.wheel_result_label.text = "Need >= 2 items!"
+            return
+            
+        gw = self.root.ids.graphic_wheel
+        gw.draw_wheel(self.wheel_items)
+        
+        self.root.ids.wheel_btn.disabled = True
+        self.root.ids.wheel_result_label.text = "SPINNING..."
+        
+        winner_idx = random.randint(0, len(self.wheel_items) - 1)
+        self.final_chosen = self.wheel_items[winner_idx]
+        
+        N = len(self.wheel_items)
+        A = 360.0 / N
+        M = winner_idx * A + (A / 2)
+        offset = random.uniform(-A/4, A/4)
+        
+        target_angle = 90 - M + offset + (360 * 5)
+        gw.spin_angle = gw.spin_angle % 360
+        
+        anim = Animation(spin_angle=target_angle, duration=4.0, transition='out_quad')
+        anim.bind(on_complete=self._finish_wheel)
+        anim.start(gw)
+        
+    def _finish_wheel(self, *args):
+        self.root.ids.wheel_result_label.text = self.final_chosen
+        self.root.ids.wheel_btn.disabled = False
+        if vibrator:
+             try: vibrator.vibrate(0.6)
+             except: pass
 
 if __name__ == '__main__':
-    RandomApp().run()
+    StevenRandomApp().run()
