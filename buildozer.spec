@@ -6,64 +6,71 @@ title = Random STEVEN
 # (str) Package name
 package.name = randomsteven
 
-# (str) Package domain (needed for android/ios packaging)
+# (str) Package domain
 package.domain = org.steven
 
 # (str) Source code where the main.py live
 source.dir = .
 
-# (list) Source files to include (let empty to include all the files)
-# Đã thêm mp3 và wav để sẵn sàng cho tính năng âm thanh
+# (list) Source files to include
 source.include_exts = py,png,jpg,kv,atlas,mp3,wav
-#Thêm logo
+
+# Biểu tượng ứng dụng
 icon.filename = %(source.dir)s/icon.png
-# (str) Adaptive icon of the application (used if Android API level is 26+ at runtime)
 icon.adaptive_foreground.filename = %(source.dir)s/icon.png
 icon.adaptive_background.filename = %(source.dir)s/icon.png
-# (str) Application versioning (method 1)
+
+# Phiên bản
 version = 1.0
 
 # (list) Application requirements
-# Đã thêm kivymd và plyer (thư viện rung)
-requirements = python3,kivy,kivymd,plyer,pyjnius>=1.4.9
+requirements = python3,kivy==2.3.0,kivymd>=1.2.0,plyer,pyjnius>=1.4.9
 
-# (list) Supported orientations
-# Chốt màn hình dọc để giao diện không bị vỡ khi xoay ngang máy
+# Chốt màn hình dọc
 orientation = portrait
 
-#
-# Android specific
-#
+# ==========================================
+# Android specific (CẤU HÌNH API 35 CHUẨN)
+# ==========================================
 
-# (bool) Indicate if the application should be fullscreen or not
-fullscreen = 0
-
-# (list) Permissions
-# Cấp quyền rung vật lý cho thiết bị
-android.permissions = VIBRATE
-
-# (int) Target Android API, should be as high as possible.
-# Nâng cấp lên API 35 theo chuẩn Android mới nhất
+# (int) Target Android API
 android.api = 35
 
-# (int) Minimum API your APK / AAB will support.
+# (int) Minimum API support (Android 5.0)
 android.minapi = 21
 
-# (bool) If True, then automatically accept SDK license
+# (bool) Chấp nhận license tự động
 android.accept_sdk_license = True
 
-# (list) The Android archs to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
+# --- PHẦN QUAN TRỌNG NHẤT ĐỂ FIX LỖI API 35 ---
+# Ép Buildozer dùng "kho phụ tùng" của GitHub Actions
+android.sdk_path = /usr/local/lib/android/sdk
+android.ndk_path = /usr/local/lib/android/sdk/ndk/27.3.13750724
+
+# (list) Permissions
+android.permissions = VIBRATE, INTERNET
+
+# (list) Các kiến trúc chip (Bắt buộc cho Play Store)
 android.archs = arm64-v8a, armeabi-v7a
 
-# (bool) enables Android auto backup feature (Android API >=23)
-android.allow_backup = True
+# (bool) Fullscreen
+fullscreen = 0
 
+# (str) Android logcat filters
+android.logcat_filters = *:S python:D
+
+# (bool) Copy library
+android.copy_libs = 1
+
+# ==========================================
+# Buildozer settings
+# ==========================================
 [buildozer]
 
-# (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
+# Log level 2 để soi lỗi kỹ hơn
 log_level = 2
 
-# (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
-# Định dạng file xuất ra khi build chế độ Release (mặc định là aab)
+
+# Định dạng xuất xưởng: aab cho Google Play
 android.release_artifact = aab
