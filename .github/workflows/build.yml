@@ -58,6 +58,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      # Cài API 35 và chấp nhận các điều khoản tự động
+      - name: Install Android API 35
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-35" "build-tools;35.0.0"
 
       # 4. Cài đặt Buildozer và Cython
       - name: Install Buildozer and Cython
