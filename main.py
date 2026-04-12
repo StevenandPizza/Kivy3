@@ -50,9 +50,6 @@ class RotatedLabel(Label):
             self.rot.angle = self.angle
 
 # ==========================================
-# CLASS ĐỒ HỌA: VÒNG QUAY
-# ==========================================
-# ==========================================
 # CLASS ĐỒ HỌA: VÒNG QUAY (ĐÃ FIX CHUẨN TÂM CHỮ)
 # ==========================================
 class RouletteGraphic(FloatLayout):
@@ -95,11 +92,7 @@ class RouletteGraphic(FloatLayout):
             PopMatrix()
             
         for i, item in enumerate(items):
-            # Góc của lát bánh (tính theo Kivy Ellipse)
             kivy_angle = i * A + (A / 2)
-            
-            # BÍ KÍP Ở ĐÂY: Quy đổi hệ trục toạ độ!
-            # Kivy Ellipse (12h, thuận kim đồng hồ) -> Toán học (3h, ngược kim đồng hồ)
             math_angle = 90 - kivy_angle
             rad = math.radians(math_angle)
             
@@ -111,7 +104,6 @@ class RouletteGraphic(FloatLayout):
             short_text = text_str[:6] + ".." if len(text_str) > 7 else text_str
             dynamic_font_size = '16sp' if N <= 8 else '12sp'
             
-            # Đưa math_angle vào để chữ hướng đúng chuẩn ra rìa
             lbl = RotatedLabel(text=short_text, font_size=dynamic_font_size, bold=True, angle=math_angle)
             lbl.center = (cx, cy)
             self.add_widget(lbl)
@@ -120,8 +112,9 @@ class RouletteGraphic(FloatLayout):
         if hasattr(self, 'rot'):
             self.rot.angle = self.spin_angle
             self.rot.origin = self.center
+
 # ==========================================
-# GIAO DIỆN KV NGÔN NGỮ (FULL 4 TABS)
+# GIAO DIỆN KV NGÔN NGỮ (ĐÃ FIX UI TEXTFIELD)
 # ==========================================
 KV = '''
 MDScreen:
@@ -227,7 +220,9 @@ MDScreen:
                     height: dp(30)
                 MDTextField:
                     id: names_input
-                    hint_text: 'Enter names (one per line)'
+                    hint_text: 'Enter names'
+                    helper_text: '(One name per line)'
+                    helper_text_mode: 'persistent'
                     mode: "rectangle"
                     multiline: True
                     size_hint_y: 0.4
@@ -273,12 +268,10 @@ MDScreen:
             name: 'tab_wheel'
             text: 'Wheel'
             icon: 'sync-circle'
-
             MDBoxLayout:
                 orientation: 'vertical'
                 padding: dp(20)
                 spacing: dp(10)
-
                 MDLabel:
                     text: 'SPIN THE WHEEL'
                     font_style: 'H5'
@@ -288,30 +281,27 @@ MDScreen:
                     halign: 'center'
                     size_hint_y: None
                     height: dp(30)
-
                 MDTextField:
                     id: wheel_input
-                    hint_text: 'Enter items (one per line)...'
+                    hint_text: 'Enter items'
+                    helper_text: '(One item per line)'
+                    helper_text_mode: 'persistent'
                     mode: "rectangle"
                     multiline: True
                     size_hint_y: 0.3
-
                 MDFloatLayout:
                     size_hint_y: 0.5
-                    
                     RouletteGraphic:
                         id: graphic_wheel
                         size_hint: None, None
                         size: dp(240), dp(240)
                         pos_hint: {"center_x": .5, "center_y": .5}
-                        
                     MDIcon:
                         icon: "menu-down"
                         font_size: "60sp"
                         theme_text_color: "Custom"
                         text_color: 0.1, 0.1, 0.1, 1
                         pos_hint: {"center_x": .5, "center_y": .95}
-
                 MDLabel:
                     id: wheel_result_label
                     text: 'TAP SPIN'
@@ -322,7 +312,6 @@ MDScreen:
                     bold: True
                     size_hint_y: None
                     height: dp(40)
-
                 MDFillRoundFlatButton:
                     id: wheel_btn
                     text: 'SPIN NOW!'
@@ -355,7 +344,9 @@ MDScreen:
                     height: dp(30)
                 MDTextField:
                     id: team_names_input
-                    hint_text: 'Enter player names...'
+                    hint_text: 'Player names'
+                    helper_text: '(One name per line)'
+                    helper_text_mode: 'persistent'
                     mode: "rectangle"
                     multiline: True
                     size_hint_y: 0.4
