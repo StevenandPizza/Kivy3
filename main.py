@@ -6,7 +6,7 @@ from kivy.metrics import dp
 from kivy.clock import Clock
 from kivy.animation import Animation
 from kivy.uix.floatlayout import FloatLayout
-from kivy.properties import NumericProperty
+from kivy.properties import NumericProperty, ListProperty
 from kivy.graphics import Color, Ellipse, PushMatrix, PopMatrix, Rotate
 from kivy.uix.label import Label
 from kivy.core.audio import SoundLoader
@@ -24,7 +24,7 @@ except ImportError:
     vibrator = None
 
 # ==========================================
-# CLASS HỖ TRỢ: CHỮ NGHIÊNG THEO VÒNG QUAY
+# CLASS HỖ TRỢ: CHỮ XOAY THEO VÒNG QUAY
 # ==========================================
 class RotatedLabel(Label):
     angle = NumericProperty(0)
@@ -39,83 +39,76 @@ class RotatedLabel(Label):
         
         with self.canvas.before:
             PushMatrix()
-            self.rot = Rotate(angle=0, origin=self.center)
+            self.rot = Rotate(angle=self.angle, origin=self.center)
         with self.canvas.after:
             PopMatrix()
             
-        self.bind(center=self.update_transform, angle=self.update_transform)
-        
-    def update_transform(self, *args):
+    def on_angle(self, instance, value):
         if hasattr(self, 'rot'):
-            self.rot.origin = self.center
-            self.rot.angle = self.angle
+            self.rot.angle = value
+            
+    def on_center(self, instance, value):
+        if hasattr(self, 'rot'):
+            self.rot.origin = value
 
 # ==========================================
-# CLASS ĐỒ HỌA: VÒNG QUAY (ĐÃ FIX CHUẨN TÂM)
+# CLASS ĐỒ HỌA: VÒNG QUAY (FIX CHUẨN KIM & CHỮ)
 # ==========================================
 class RouletteGraphic(FloatLayout):
     spin_angle = NumericProperty(0)
+    items = ListProperty([])
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.items = []
-        self.bind(spin_angle=self.update_wheel_rotation, pos=self.redraw, size=self.redraw)
+        self.labels = []
+        # Tự động cập nhật chữ khi vòng quay xoay
+        self.bind(spin_angle=self.update_graphics, pos=self.update_graphics, size=self.update_graphics)
         
-    def redraw(self, *args):
-        self.draw_wheel(self.items)
-
     def draw_wheel(self, items):
         self.items = items
+        self.update_graphics()
+
+    def update_graphics(self, *args):
         self.canvas.before.clear()
-        self.canvas.after.clear()
         self.clear_widgets()
         
-        if not items: return
+        if not self.items: return
         
-        N = len(items)
+        N = len(self.items)
         A = 360.0 / N
         colors = [(0.9, 0.3, 0.3, 1), (0.2, 0.6, 0.8, 1), (0.9, 0.7, 0.1, 1), 
                   (0.2, 0.7, 0.4, 1), (0.6, 0.3, 0.7, 1), (0.9, 0.5, 0.2, 1)]
                   
         with self.canvas.before:
             PushMatrix()
-            self.rot = Rotate(angle=self.spin_angle, origin=self.center)
-            
+            # Xoay toàn bộ phần nền màu
+            Rotate(angle=self.spin_angle, origin=self.center)
             for i in range(N):
-                color_idx = i % len(colors)
-                if i == N - 1 and color_idx == 0 and N > 1:
-                    color_idx = 1
-                    
-                Color(*colors[color_idx])
+                Color(*colors[i % len(colors)])
                 Ellipse(pos=self.pos, size=self.size, angle_start=i*A, angle_end=(i+1)*A)
-                
-        with self.canvas.after:
             PopMatrix()
+
+        # Vẽ chữ và di chuyển chữ theo góc xoay spin_angle
+        for i, item in enumerate(self.items):
+            # Trong Kivy, 0 độ là vị trí 3 giờ. 
+            # Góc hiện tại của item = Góc gốc + Góc đang xoay
+            current_angle = i * A + (A / 2) + self.spin_angle
             
-        for i, item in enumerate(items):
-            kivy_angle = i * A + (A / 2)
-            math_angle = 90 - kivy_angle
-            rad = math.radians(math_angle)
-            
-            r = min(self.width, self.height) * 0.35
+            rad = math.radians(current_angle)
+            r = self.width * 0.35
             cx = self.center_x + r * math.cos(rad)
             cy = self.center_y + r * math.sin(rad)
             
             text_str = str(item)
             short_text = text_str[:6] + ".." if len(text_str) > 7 else text_str
-            dynamic_font_size = '16sp' if N <= 8 else '12sp'
             
-            lbl = RotatedLabel(text=short_text, font_size=dynamic_font_size, bold=True, angle=math_angle)
+            lbl = RotatedLabel(text=short_text, font_size='14sp', bold=True, color=(1,1,1,1))
+            lbl.angle = current_angle # Chữ xoay theo hướng ô
             lbl.center = (cx, cy)
             self.add_widget(lbl)
 
-    def update_wheel_rotation(self, *args):
-        if hasattr(self, 'rot'):
-            self.rot.angle = self.spin_angle
-            self.rot.origin = self.center
-
 # ==========================================
-# GIAO DIỆN KV NGÔN NGỮ
+# GIAO DIỆN KV (FULL TAB)
 # ==========================================
 KV = '''
 MDScreen:
@@ -126,9 +119,6 @@ MDScreen:
         selected_color_background: app.theme_cls.primary_color
         text_color_active: app.theme_cls.primary_color
 
-        # ------------------------------------------
-        # TAB 1: NUMBERS
-        # ------------------------------------------
         MDBottomNavigationItem:
             name: 'tab_number'
             text: 'Numbers'
@@ -199,9 +189,6 @@ MDScreen:
                             height: self.texture_size[1]
                             text_size: self.width, None
 
-        # ------------------------------------------
-        # TAB 2: NAMES
-        # ------------------------------------------
         MDBottomNavigationItem:
             name: 'tab_name'
             text: 'Names'
@@ -262,9 +249,6 @@ MDScreen:
                     md_bg_color: 0.66, 0.33, 0.97, 1
                     on_release: app.start_draw_animation('name')
 
-        # ------------------------------------------
-        # TAB 3: ROULETTE WHEEL
-        # ------------------------------------------
         MDBottomNavigationItem:
             name: 'tab_wheel'
             text: 'Wheel'
@@ -295,7 +279,7 @@ MDScreen:
                     RouletteGraphic:
                         id: graphic_wheel
                         size_hint: None, None
-                        size: dp(240), dp(240)
+                        size: dp(260), dp(260)
                         pos_hint: {"center_x": .5, "center_y": .5}
                     MDIcon:
                         icon: "menu-down"
@@ -323,9 +307,6 @@ MDScreen:
                     md_bg_color: 0.18, 0.8, 0.44, 1
                     on_release: app.start_wheel()
 
-        # ------------------------------------------
-        # TAB 4: TEAMS
-        # ------------------------------------------
         MDBottomNavigationItem:
             name: 'tab_team'
             text: 'Teams'
@@ -406,56 +387,29 @@ class StevenRandomApp(MDApp):
             
         return Builder.load_string(KV)
 
-    # --- HÀM ÂM THANH AN TOÀN ---
-    def safe_play_click(self):
+    # --- HÀM ÂM THANH ---
+    def safe_play(self, sound):
         try:
-            if self.snd_click:
-                if self.snd_click.state == 'play':
-                    self.snd_click.stop()
-                self.snd_click.play()
-        except Exception:
-            pass
-
-    def safe_play_spin(self):
-        try:
-            if self.snd_spin:
-                if self.snd_spin.state == 'play':
-                    self.snd_spin.stop()
-                self.snd_spin.play()
-        except Exception:
-            pass
-
-    def safe_play_win(self, dt=0):
-        try:
-            if self.snd_win:
-                if self.snd_win.state == 'play':
-                    self.snd_win.stop()
-                self.snd_win.play()
-        except Exception:
-            pass
-
-    def stop_spin_sound(self):
-        try:
-            if self.snd_spin and self.snd_spin.state == 'play':
-                self.snd_spin.stop()
-        except Exception:
-            pass
+            if sound:
+                sound.stop()
+                sound.play()
+        except Exception: pass
 
     # --- TAB NUMBERS ---
     def setup_numbers(self):
-        self.safe_play_click()
+        self.safe_play(self.snd_click)
         val = self.root.ids.max_input.text
         if val and val.isdigit() and int(val) > 0:
             self.available_numbers = list(range(1, int(val) + 1))
             self.drawn_numbers = []
             self.root.ids.result_label.text = "?"
             self.root.ids.history_label.text = "No history yet..."
-            self.root.ids.status_label.text = f"Created 1 to {val}. Remaining: {len(self.available_numbers)}"
+            self.root.ids.status_label.text = f"Total: {len(self.available_numbers)}"
             self.root.ids.draw_btn.disabled = False
 
     # --- TAB NAMES ---
     def setup_names(self):
-        self.safe_play_click()
+        self.safe_play(self.snd_click)
         raw_text = self.root.ids.names_input.text
         names_list = [n.strip() for n in raw_text.split('\n') if n.strip()]
         if names_list:
@@ -464,19 +418,17 @@ class StevenRandomApp(MDApp):
             self.root.ids.name_status_label.text = f"Loaded {len(self.available_names)} names."
             self.root.ids.name_draw_btn.disabled = False
 
-    # --- ANIMATION ---
+    # --- ANIMATION BỐC SỐ/TÊN ---
     def start_draw_animation(self, mode):
-        self.safe_play_click()
+        self.safe_play(self.snd_click)
         self.current_mode = mode
         if mode == 'number':
             if not self.available_numbers: return
             self.root.ids.draw_btn.disabled = True
-            self.root.ids.draw_btn.text = "DRAWING..."
             self.final_chosen = random.choice(self.available_numbers)
         elif mode == 'name':
             if not self.available_names: return
             self.root.ids.name_draw_btn.disabled = True
-            self.root.ids.name_draw_btn.text = "SEARCHING..."
             self.final_chosen = random.choice(self.available_names)
 
         self.animation_ticks = 0
@@ -484,132 +436,100 @@ class StevenRandomApp(MDApp):
 
     def _animate_values(self, dt):
         self.animation_ticks += 1
+        if self.animation_ticks % 2 == 0: self.safe_play(self.snd_spin)
         
-        if self.animation_ticks % 2 == 0:
-            self.safe_play_spin()
-            
         if self.current_mode == 'number':
             self.root.ids.result_label.text = str(random.choice(self.available_numbers))
         else:
             self.root.ids.name_result_label.text = random.choice(self.available_names)
         
-        if vibrator and self.animation_ticks % 2 == 0:
-            try: vibrator.vibrate(0.01)
-            except: pass
-                
         if self.animation_ticks >= 20:
             Clock.unschedule(self._animate_values)
             self._finish_draw()
 
     def _finish_draw(self):
-        self.stop_spin_sound()
-        Clock.schedule_once(self.safe_play_win, 0.1)
+        if self.snd_spin: self.snd_spin.stop()
+        self.safe_play(self.snd_win)
         
         if self.current_mode == 'number':
             chosen = self.final_chosen
             self.available_numbers.remove(chosen)
             self.drawn_numbers.append(chosen)
             self.root.ids.result_label.text = str(chosen)
-            self.root.ids.status_label.text = f"Drawn: {chosen}. Remaining: {len(self.available_numbers)}"
-            self.root.ids.draw_btn.text = "DRAW NOW"
+            self.root.ids.status_label.text = f"Remaining: {len(self.available_numbers)}"
             self.root.ids.history_label.text = ", ".join(map(str, reversed(self.drawn_numbers)))
-            if self.available_numbers: self.root.ids.draw_btn.disabled = False
-            else: self.root.ids.status_label.text = "All numbers drawn!"
-            
-        elif self.current_mode == 'name':
+            self.root.ids.draw_btn.disabled = False if self.available_numbers else True
+        else:
             chosen = self.final_chosen
             self.available_names.remove(chosen)
             self.root.ids.name_result_label.text = str(chosen)
-            self.root.ids.name_status_label.text = f"Picked: {chosen}. Remaining: {len(self.available_names)}"
-            self.root.ids.name_draw_btn.text = "PICK SOMEONE"
-            self.root.ids.names_input.text = "\n".join(self.available_names)
-            if self.available_names: self.root.ids.name_draw_btn.disabled = False
-            else: self.root.ids.name_status_label.text = "Everyone has been picked!"
+            self.root.ids.name_status_label.text = f"Remaining: {len(self.available_names)}"
+            self.root.ids.name_draw_btn.disabled = False if self.available_names else True
 
-        if vibrator:
-            try: vibrator.vibrate(0.3)
-            except: pass
-
-    # --- TAB VÒNG QUAY ĐỒ HỌA ---
+    # --- TAB VÒNG QUAY ---
     def start_wheel(self):
-        self.safe_play_click()
+        self.safe_play(self.snd_click)
         raw_text = self.root.ids.wheel_input.text
-        self.wheel_items = [n.strip() for n in raw_text.split('\n') if n.strip()]
+        items = [n.strip() for n in raw_text.split('\n') if n.strip()]
         
-        if len(self.wheel_items) < 2:
-            self.root.ids.wheel_result_label.text = "Need >= 2 items!"
+        if len(items) < 2:
+            self.root.ids.wheel_result_label.text = "Min 2 items!"
             return
             
         gw = self.root.ids.graphic_wheel
-        gw.draw_wheel(self.wheel_items)
+        gw.draw_wheel(items)
         
         self.root.ids.wheel_btn.disabled = True
         self.root.ids.wheel_result_label.text = "SPINNING..."
+        self.safe_play(self.snd_spin)
+
+        # Chọn người thắng
+        winner_idx = random.randint(0, len(items) - 1)
+        self.final_chosen = items[winner_idx]
         
-        winner_idx = random.randint(0, len(self.wheel_items) - 1)
-        self.final_chosen = self.wheel_items[winner_idx]
-        
-        N = len(self.wheel_items)
+        # LOGIC TOÁN HỌC: Kim ở đỉnh (90 độ). 
+        # Để item i ở vị trí 90 độ, ta cần xoay: 90 - (góc_item_i)
+        N = len(items)
         A = 360.0 / N
-        M = winner_idx * A + (A / 2)
-        offset = random.uniform(-A/4, A/4)
+        angle_of_winner = winner_idx * A + (A / 2)
         
-        target_angle = 90 - M + offset + (360 * 5)
+        # Xoay thêm 5-10 vòng cho hoành tráng
+        target_rotation = 90 - angle_of_winner + (360 * random.randint(5, 8))
+        
+        # Reset góc để không bị xoay ngược
         gw.spin_angle = gw.spin_angle % 360
-        self.last_tick_angle = gw.spin_angle
         
-        anim = Animation(spin_angle=target_angle, duration=4.0, transition='out_quad')
-        anim.bind(on_progress=self.check_spin_tick, on_complete=self._finish_wheel)
+        anim = Animation(spin_angle=target_rotation, duration=4.0, transition='out_quad')
+        anim.bind(on_complete=self._finish_wheel)
         anim.start(gw)
 
-    def check_spin_tick(self, anim, widget, progress):
-        step = 360 / max(1, len(self.wheel_items))
-        if abs(widget.spin_angle - self.last_tick_angle) >= step:
-            self.safe_play_spin()
-            self.last_tick_angle = widget.spin_angle
-        
     def _finish_wheel(self, *args):
-        self.stop_spin_sound()
-        Clock.schedule_once(self.safe_play_win, 0.1)
-        
+        if self.snd_spin: self.snd_spin.stop()
+        self.safe_play(self.snd_win)
         self.root.ids.wheel_result_label.text = self.final_chosen
         self.root.ids.wheel_btn.disabled = False
-        
-        if vibrator:
-             try: vibrator.vibrate(0.6)
-             except: pass
 
     # --- TAB CHIA ĐỘI ---
     def split_teams(self):
-        self.safe_play_click()
+        self.safe_play(self.snd_click)
         raw_text = self.root.ids.team_names_input.text
         names_list = [n.strip() for n in raw_text.split('\n') if n.strip()]
         team_count_str = self.root.ids.team_count_input.text
         
-        if not names_list or not team_count_str or int(team_count_str) < 1:
-            self.root.ids.team_result_label.text = "Error: Invalid input!"
-            return
+        if names_list and team_count_str.isdigit():
+            team_count = int(team_count_str)
+            random.shuffle(names_list)
+            teams = {i: [] for i in range(team_count)}
+            for index, name in enumerate(names_list):
+                teams[index % team_count].append(name)
             
-        team_count = int(team_count_str)
-        if team_count > len(names_list):
-            self.root.ids.team_result_label.text = "Error: Teams > Players!"
-            return
+            result_text = ""
+            for i in range(team_count):
+                result_text += f"[b]TEAM {i+1}:[/b]\n"
+                result_text += " • " + "\n • ".join(teams[i]) + "\n\n"
             
-        random.shuffle(names_list)
-        teams = {i: [] for i in range(team_count)}
-        for index, name in enumerate(names_list):
-            teams[index % team_count].append(name)
-            
-        result_text = ""
-        for i in range(team_count):
-            result_text += f"[b]TEAM {i+1} ({len(teams[i])} players):[/b]\n"
-            result_text += " • " + "\n • ".join(teams[i]) + "\n\n"
-            
-        self.root.ids.team_result_label.markup = True
-        self.root.ids.team_result_label.text = result_text
-        if vibrator:
-            try: vibrator.vibrate(0.2)
-            except: pass
+            self.root.ids.team_result_label.markup = True
+            self.root.ids.team_result_label.text = result_text
 
 if __name__ == '__main__':
     StevenRandomApp().run()
