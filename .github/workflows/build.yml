@@ -27,11 +27,17 @@ jobs:
           sudo apt-get install -y build-essential git python3-dev ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev libssl-dev libffi-dev zip unzip autoconf libtool pkg-config
 
       # 3. Cài đặt Android API 35 THẬT CHUẨN
+      # 3.5 Sửa lỗi đường dẫn sdkmanager và cài API 35
       - name: Install Android API 35
         run: |
-          # Chấp nhận bản quyền và cài đặt API 35 cùng Build-tools tương ứng
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-35" "build-tools;35.0.0"
-
+          # 1. Tạo thư mục mà Buildozer mong muốn
+          sudo mkdir -p /usr/local/lib/android/sdk/tools/bin
+          
+          # 2. Tạo "cầu nối" từ sdkmanager thật sang chỗ Buildozer tìm
+          sudo ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager /usr/local/lib/android/sdk/tools/bin/sdkmanager
+          
+          # 3. Bây giờ mới cài API 35 (Lệnh này giờ sẽ chạy được)
+          echo "y" | /usr/local/lib/android/sdk/tools/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-35" "build-tools;35.0.0"
       # 4. Thiết lập Python
       - name: Set up Python
         uses: actions/setup-python@v5
