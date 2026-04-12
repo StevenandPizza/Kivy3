@@ -1,0 +1,83 @@
+name: CI
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 1. Thiết lập Java 17 (Bỏ phần cache để tránh lỗi không tìm thấy file)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 2. Cài đặt các thư viện hệ thống
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libunwind-dev
+          sudo apt-get install -f
+          sudo apt-get install -y \
+            build-essential \
+            git \
+            python3-dev \
+            ffmpeg \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-mixer-dev \
+            libsdl2-ttf-dev \
+            libportmidi-dev \
+            libswscale-dev \
+            libavformat-dev \
+            libavcodec-dev \
+            zlib1g-dev \
+            libsqlite3-dev \
+            sqlite3 \
+            bzip2 \
+            libbz2-dev \
+            libssl-dev \
+            openssl \
+            libffi-dev \
+            zip \
+            unzip \
+            autoconf \
+            libtool \
+            pkg-config
+
+      # 3. Thiết lập Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 4. Cài đặt Buildozer và Cython
+      - name: Install Buildozer and Cython
+        run: |
+          pip install --upgrade pip
+          pip install "buildozer>=1.5.0" "cython<3.0"
+
+      # 5. Cache Buildozer (Key v8)
+      - name: Cache Buildozer
+        uses: actions/cache@v4
+        with:
+          path: .buildozer
+          key: ${{ runner.os }}-buildozer-v8-${{ hashFiles('buildozer.spec') }}
+
+      # 6. Build App
+      - name: Build with Buildozer
+        run: buildozer android debug
+        env:
+          ACCEPT_SDK_LICENSE: "True"
+
+      # 7. Upload APK
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: bin/*.apk
