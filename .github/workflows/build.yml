@@ -71,7 +71,7 @@ jobs:
 
       # 6. Build App
       - name: Build with Buildozer
-        run: buildozer android debug
+        run: buildozer android release
         env:
           ACCEPT_SDK_LICENSE: "True"
 
