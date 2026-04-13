@@ -44,7 +44,7 @@ android.minapi = 21
 android.sdk = 35
 
 # (str) Android NDK version to use
-android.ndk = 27c
+android.ndk = 25b
 
 # (bool) Chấp nhận license tự động
 android.accept_sdk_license = True
