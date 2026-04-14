@@ -42,12 +42,12 @@ jobs:
 
       - name: Build with Buildozer
         env:
-          P4A_RELEASE_KEYSTORE: steven.keystore
+          # Thêm github.workspace vào để chỉ định đường dẫn tuyệt đối
+          P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/steven.keystore
           P4A_RELEASE_KEYALIAS: stevenapp
           P4A_RELEASE_KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
           P4A_RELEASE_KEYALIAS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
           ACCEPT_SDK_LICENSE: "True"
-          # Gán trực tiếp path tĩnh của Ubuntu Runner thay vì dùng biến môi trường
           ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
           buildozer android release
