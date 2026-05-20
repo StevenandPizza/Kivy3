@@ -78,4 +78,4 @@ log_level = 2
 warn_on_root = 1
 
 # ĐÃ SỬA: Xuất file aab đúng chuẩn để tải lên Google Play
-android.release_artifact = aab
+android.release_artifact = apk
