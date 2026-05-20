@@ -29,21 +29,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      # BƯỚC QUAN TRỌNG: Chấp nhận toàn bộ giấy phép của Google
-      - name: Accept Android SDK Licenses
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME --licenses
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-35" "build-tools;35.0.0"
-
       - name: Install Buildozer and Cython
         run: |
           pip install --upgrade pip
           pip install "buildozer>=1.5.0" "cython<3.0"
 
       - name: Build with Buildozer
-        env:
-          ACCEPT_SDK_LICENSE: "True"
-          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
           buildozer android release
 
