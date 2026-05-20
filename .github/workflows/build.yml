@@ -42,18 +42,23 @@ jobs:
 
       - name: Build with Buildozer
         env:
-          # Thêm github.workspace vào để chỉ định đường dẫn tuyệt đối
-          P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/steven.keystore
-          P4A_RELEASE_KEYALIAS: stevenapp
-          P4A_RELEASE_KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
-          P4A_RELEASE_KEYALIAS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
           ACCEPT_SDK_LICENSE: "True"
           ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
           buildozer android release
 
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: bin
+          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: RandomSTEVEN-AAB-API35
-          path: bin/*
+          name: RandomSTEVEN-APK-Signed
+          path: ${{steps.sign_app.outputs.signedReleaseFile}}

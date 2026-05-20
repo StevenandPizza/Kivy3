@@ -80,4 +80,4 @@ log_level = 2
 warn_on_root = 1
 
 # Định dạng xuất xưởng: aab cho Google Play Store
-android.release_artifact = aab
+android.release_artifact = apk
