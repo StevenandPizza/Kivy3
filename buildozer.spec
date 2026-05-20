@@ -15,7 +15,7 @@ source.dir = .
 # (list) Source files to include
 source.include_exts = py,png,jpg,kv,atlas,mp3,wav
 
-# Biểu tượng ứng dụng (Đảm bảo bạn có file icon.png trong thư mục gốc)
+# Biểu tượng ứng dụng
 icon.filename = %(source.dir)s/icon.png
 icon.adaptive_foreground.filename = %(source.dir)s/icon.png
 icon.adaptive_background.filename = %(source.dir)s/icon.png
@@ -24,8 +24,8 @@ icon.adaptive_background.filename = %(source.dir)s/icon.png
 version = 1.0
 
 # (list) Application requirements
-# Thêm pillow để hỗ trợ xử lý hình ảnh cho KivyMD nếu cần
-requirements = python3,kivy==2.3.0,kivymd>=1.2.0,plyer,pyjnius>=1.4.9,pillow
+# ĐÃ SỬA LỖI: Xóa pyjnius ra khỏi danh sách để hệ thống tự động biên dịch ngầm
+requirements = python3,kivy==2.3.0,kivymd>=1.2.0,plyer,pillow
 
 # Chốt màn hình dọc
 orientation = portrait
@@ -49,11 +49,6 @@ android.ndk = 25b
 # (bool) Chấp nhận license tự động
 android.accept_sdk_license = True
 
-# --- LƯU Ý QUAN TRỌNG ---
-# Để file .yml quản lý đường dẫn, chúng ta để trống hoặc khóa 2 dòng này lại
-# android.sdk_path = 
-# android.ndk_path = 
-
 # (list) Permissions
 android.permissions = VIBRATE, INTERNET
 
@@ -69,6 +64,9 @@ android.copy_libs = 1
 # (str) Android logcat filters
 android.logcat_filters = *:S python:D
 
+# THÊM MỚI: Ép hệ thống dùng nhánh develop của python-for-android để tránh 100% lỗi xung đột pip
+p4a.branch = develop
+
 # ==========================================
 # Buildozer settings
 # ==========================================
@@ -79,5 +77,5 @@ log_level = 2
 
 warn_on_root = 1
 
-# Định dạng xuất xưởng: aab cho Google Play Store
-android.release_artifact = apk
+# ĐÃ SỬA: Xuất file aab đúng chuẩn để tải lên Google Play
+android.release_artifact = aab
