@@ -25,7 +25,7 @@ version = 1.0
 
 # (list) Application requirements
 # In your buildozer.spec requirements
-requirements = python3==3.11,kivy==2.3.0,kivymd==1.2.0,plyer,pillow
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,plyer,pillow
 
 # Chốt màn hình dọc
 orientation = portrait
@@ -64,8 +64,7 @@ android.copy_libs = 1
 # (str) Android logcat filters
 android.logcat_filters = *:S python:D
 
-# THÊM MỚI: Ép hệ thống dùng nhánh develop của python-for-android để tránh 100% lỗi xung đột pip
-p4a.branch = develop
+
 
 # ĐÃ SỬA: Xuất file aab đúng chuẩn để tải lên Google Play
 android.release_artifact = apk
