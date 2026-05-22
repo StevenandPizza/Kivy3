@@ -19,12 +19,27 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build with Buildozer Docker
+      - name: Install system dependencies
         run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/home/user/hostcwd" \
-            kivy/buildozer:latest \
-            android release
+          sudo apt-get update
+          sudo apt-get install -y build-essential git python3-dev ffmpeg \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
+            zlib1g-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev libssl-dev \
+            libffi-dev zip unzip autoconf libtool pkg-config liblzma-dev
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Buildozer and Cython
+        run: |
+          pip install --upgrade pip
+          pip install "buildozer==1.5.0" "cython==0.29.37"
+
+      - name: Build APK
+        run: buildozer android release
 
       - name: Sign APK
         uses: r0adkll/sign-android-release@v1
@@ -37,7 +52,7 @@ jobs:
           keyPassword: ${{ secrets.KEY_PASSWORD }}
           buildToolsVersion: 35.0.0
 
-      - name: Upload artifacts
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: RandomSTEVEN-APK-Signed
