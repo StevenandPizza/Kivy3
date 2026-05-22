@@ -67,6 +67,8 @@ android.logcat_filters = *:S python:D
 # THÊM MỚI: Ép hệ thống dùng nhánh develop của python-for-android để tránh 100% lỗi xung đột pip
 p4a.branch = develop
 
+# ĐÃ SỬA: Xuất file aab đúng chuẩn để tải lên Google Play
+android.release_artifact = apk
 # ==========================================
 # Buildozer settings
 # ==========================================
@@ -77,5 +79,3 @@ log_level = 2
 
 warn_on_root = 1
 
-# ĐÃ SỬA: Xuất file aab đúng chuẩn để tải lên Google Play
-android.release_artifact = apk
