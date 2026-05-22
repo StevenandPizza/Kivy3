@@ -33,26 +33,20 @@ orientation = portrait
 # Android specific
 # ==========================================
 # Remove this line entirely, OR change to:
-p4a.branch = master
-p4a.python_version = 3.11
+p4a.branch = v2024.01.21
+
 # (int) Target Android API (Android 15)
 android.api = 35
-
 # (int) Minimum API support (Android 5.0)
 android.minapi = 21
-
 # (int) Android SDK version to use
 android.sdk = 35
-
 # (str) Android NDK version to use
 android.ndk = 25b
-
 # (bool) Chấp nhận license tự động
 android.accept_sdk_license = True
-
 # (list) Permissions
 android.permissions = VIBRATE, INTERNET
-
 # (list) Các kiến trúc chip cho máy Android hiện đại
 android.archs = arm64-v8a, armeabi-v7a
 
