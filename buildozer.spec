@@ -32,8 +32,7 @@ orientation = portrait
 # ==========================================
 # Android specific
 # ==========================================
-# Remove this line entirely, OR change to:
-p4a.branch = v2024.01.21
+
 
 # (int) Target Android API (Android 15)
 android.api = 35
