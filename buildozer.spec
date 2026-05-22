@@ -25,7 +25,7 @@ version = 1.0
 
 # (list) Application requirements
 # In your buildozer.spec requirements
-requirements = python3,kivy==2.3.0,kivymd==1.1.1,plyer,pillow==10.2.0
+requirements = python3,kivy>=2.4.0,kivymd==1.1.1,plyer,pillow==10.2.0
 # Chốt màn hình dọc
 orientation = portrait
 
