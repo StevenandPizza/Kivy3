@@ -25,14 +25,16 @@ version = 1.0
 
 # (list) Application requirements
 # In your buildozer.spec requirements
-requirements = python3,kivy>=2.4.0,kivymd==1.1.1,plyer,pillow==10.2.0
+requirements = python3,kivy==2.3.0,kivymd==2.0.1.dev0,plyer,pillow==10.2.0
 # Chốt màn hình dọc
 orientation = portrait
 
 # ==========================================
 # Android specific
 # ==========================================
-p4a.branch = develop
+# Remove this line entirely, OR change to:
+p4a.branch = master
+p4a.python_version = 3.11
 # (int) Target Android API (Android 15)
 android.api = 35
 
