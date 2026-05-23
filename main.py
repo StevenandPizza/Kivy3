@@ -61,7 +61,6 @@ class RouletteGraphic(FloatLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.labels = []
-        # Tự động cập nhật chữ khi vòng quay xoay
         self.bind(spin_angle=self.update_graphics, pos=self.update_graphics, size=self.update_graphics)
         
     def draw_wheel(self, items):
@@ -81,19 +80,14 @@ class RouletteGraphic(FloatLayout):
                   
         with self.canvas.before:
             PushMatrix()
-            # Xoay toàn bộ phần nền màu
             Rotate(angle=self.spin_angle, origin=self.center)
             for i in range(N):
                 Color(*colors[i % len(colors)])
                 Ellipse(pos=self.pos, size=self.size, angle_start=i*A, angle_end=(i+1)*A)
             PopMatrix()
 
-        # Vẽ chữ và di chuyển chữ theo góc xoay spin_angle
         for i, item in enumerate(self.items):
-            # Trong Kivy, 0 độ là vị trí 3 giờ. 
-            # Góc hiện tại của item = Góc gốc + Góc đang xoay
             current_angle = i * A + (A / 2) + self.spin_angle
-            
             rad = math.radians(current_angle)
             r = self.width * 0.35
             cx = self.center_x + r * math.cos(rad)
@@ -103,7 +97,7 @@ class RouletteGraphic(FloatLayout):
             short_text = text_str[:6] + ".." if len(text_str) > 7 else text_str
             
             lbl = RotatedLabel(text=short_text, font_size='14sp', bold=True, color=(1,1,1,1))
-            lbl.angle = current_angle # Chữ xoay theo hướng ô
+            lbl.angle = current_angle
             lbl.center = (cx, cy)
             self.add_widget(lbl)
 
@@ -393,10 +387,12 @@ class StevenRandomApp(MDApp):
             if sound:
                 sound.stop()
                 sound.play()
-        except Exception: pass
+        except Exception:
+            pass
 
     # --- TAB NUMBERS ---
     def setup_numbers(self):
+        # FIX: Chỉ play click, không liên quan đến spin
         self.safe_play(self.snd_click)
         val = self.root.ids.max_input.text
         if val and val.isdigit() and int(val) > 0:
@@ -409,6 +405,7 @@ class StevenRandomApp(MDApp):
 
     # --- TAB NAMES ---
     def setup_names(self):
+        # FIX: Chỉ play click, không liên quan đến spin
         self.safe_play(self.snd_click)
         raw_text = self.root.ids.names_input.text
         names_list = [n.strip() for n in raw_text.split('\n') if n.strip()]
@@ -436,7 +433,10 @@ class StevenRandomApp(MDApp):
 
     def _animate_values(self, dt):
         self.animation_ticks += 1
-        if self.animation_ticks % 2 == 0: self.safe_play(self.snd_spin)
+
+        # FIX: Dừng play spin ở tick cuối để tránh chồng âm với _finish_draw
+        if self.animation_ticks < 19 and self.animation_ticks % 2 == 0:
+            self.safe_play(self.snd_spin)
         
         if self.current_mode == 'number':
             self.root.ids.result_label.text = str(random.choice(self.available_numbers))
@@ -448,9 +448,11 @@ class StevenRandomApp(MDApp):
             self._finish_draw()
 
     def _finish_draw(self):
-        if self.snd_spin: self.snd_spin.stop()
-        self.safe_play(self.snd_win)
-        
+        # FIX: Stop spin trước, delay win sound để đảm bảo spin đã dừng hẳn
+        if self.snd_spin:
+            self.snd_spin.stop()
+        Clock.schedule_once(lambda dt: self.safe_play(self.snd_win), 0.1)
+
         if self.current_mode == 'number':
             chosen = self.final_chosen
             self.available_numbers.remove(chosen)
@@ -483,20 +485,14 @@ class StevenRandomApp(MDApp):
         self.root.ids.wheel_result_label.text = "SPINNING..."
         self.safe_play(self.snd_spin)
 
-        # Chọn người thắng
         winner_idx = random.randint(0, len(items) - 1)
         self.final_chosen = items[winner_idx]
         
-        # LOGIC TOÁN HỌC: Kim ở đỉnh (90 độ). 
-        # Để item i ở vị trí 90 độ, ta cần xoay: 90 - (góc_item_i)
         N = len(items)
         A = 360.0 / N
         angle_of_winner = winner_idx * A + (A / 2)
-        
-        # Xoay thêm 5-10 vòng cho hoành tráng
         target_rotation = 90 - angle_of_winner + (360 * random.randint(5, 8))
         
-        # Reset góc để không bị xoay ngược
         gw.spin_angle = gw.spin_angle % 360
         
         anim = Animation(spin_angle=target_rotation, duration=4.0, transition='out_quad')
@@ -504,8 +500,10 @@ class StevenRandomApp(MDApp):
         anim.start(gw)
 
     def _finish_wheel(self, *args):
-        if self.snd_spin: self.snd_spin.stop()
-        self.safe_play(self.snd_win)
+        # FIX: Stop spin trước, delay win sound để đảm bảo spin đã dừng hẳn
+        if self.snd_spin:
+            self.snd_spin.stop()
+        Clock.schedule_once(lambda dt: self.safe_play(self.snd_win), 0.1)
         self.root.ids.wheel_result_label.text = self.final_chosen
         self.root.ids.wheel_btn.disabled = False
 
@@ -530,6 +528,7 @@ class StevenRandomApp(MDApp):
             
             self.root.ids.team_result_label.markup = True
             self.root.ids.team_result_label.text = result_text
+
 
 if __name__ == '__main__':
     StevenRandomApp().run()
