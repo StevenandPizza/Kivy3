@@ -40,34 +40,19 @@ jobs:
           pip install --upgrade pip
           pip install "buildozer==1.5.0" "cython==0.29.37"
 
-      - name: Build APK
+      - name: Decode Keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > my_app_key.keystore
+
+      - name: Build and Sign AAB
+        env:
+          P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/my_app_key.keystore
+          P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.KEYSTORE_PASSWORD }}
+          P4A_RELEASE_KEYALIAS: ${{ secrets.KEY_ALIAS }}
+          P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.KEY_PASSWORD }}
         run: buildozer android release
 
-      - name: Sign APK manually
-        run: |
-          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "build-tools;35.0.0"
-
-          BUILD_TOOLS=$ANDROID_SDK_ROOT/build-tools/35.0.0
-          APK=$(find bin -name "*.apk" | head -1)
-          ALIGNED_APK="${APK%.apk}-aligned.apk"
-          SIGNED_APK="${APK%.apk}-signed.apk"
-
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > keystore.jks
-
-          $BUILD_TOOLS/zipalign -v 4 "$APK" "$ALIGNED_APK"
-
-          $BUILD_TOOLS/apksigner sign \
-            --ks keystore.jks \
-            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
-            --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
-            --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
-            --out "$SIGNED_APK" \
-            "$ALIGNED_APK"
-
-          echo "SIGNED_APK=$SIGNED_APK" >> $GITHUB_ENV
-
-      - name: Upload APK
+      - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RandomSTEVEN-APK-Signed
-          path: ${{ env.SIGNED_APK }}
+          name: RandomSTEVEN-AAB-Signed
+          path: bin/*.aab
