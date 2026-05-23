@@ -25,7 +25,7 @@ version = 1.0
 
 # (list) Application requirements
 # SỬA LẠI: Chốt cứng bản kivymd 2.0.1.dev0 để không văng app
-requirements=python3,kivy==2.3.1,kivymd==1.1.1,plyer,pillow==10.4.0
+requirements = python3,kivy==2.3.1,kivymd@git+https://github.com/kivymd/KivyMD.git@master,plyer,pillow==10.4.0
 
 # Chốt màn hình dọc
 orientation = portrait
