@@ -14,7 +14,6 @@ import math
 import random
 from kivy.utils import platform
 
-# Chỉnh kích thước giả lập trên PC
 if platform not in ('android', 'ios'):
     Window.size = (400, 700)
 
@@ -102,7 +101,7 @@ class RouletteGraphic(FloatLayout):
             self.add_widget(lbl)
 
 # ==========================================
-# GIAO DIỆN KV (FULL TAB)
+# GIAO DIỆN KV
 # ==========================================
 KV = '''
 MDScreen:
@@ -256,7 +255,7 @@ MDScreen:
                     font_style: 'H5'
                     bold: True
                     theme_text_color: 'Custom'
-                    text_color: 0.18, 0.8, 0.44, 1 
+                    text_color: 0.18, 0.8, 0.44, 1
                     halign: 'center'
                     size_hint_y: None
                     height: dp(30)
@@ -372,34 +371,39 @@ class StevenRandomApp(MDApp):
         self.theme_cls.primary_palette = "Blue"
         self.theme_cls.theme_style = "Light"
         
-        # FIX: Load riêng từng file, lỗi file nào không ảnh hưởng file khác
+        # FIX: Load riêng từng file, độc lập nhau
         self.snd_click = SoundLoader.load('click.mp3')
         self.snd_win   = SoundLoader.load('win.mp3')
         self.snd_spin  = SoundLoader.load('spin.mp3')
+
+        print(f"[AUDIO] click={self.snd_click}, win={self.snd_win}, spin={self.snd_spin}")
             
         return Builder.load_string(KV)
 
-    # --- HÀM DỪNG TẤT CẢ ÂM THANH ---
+    # --- DỪNG TẤT CẢ ÂM THANH ---
     def stop_all_sounds(self):
-        if self.snd_spin: self.snd_spin.stop()
-        if self.snd_win:  self.snd_win.stop()
-        if self.snd_click: self.snd_click.stop()
+        for snd in [self.snd_spin, self.snd_win, self.snd_click]:
+            try:
+                if snd and snd.state == 'play':
+                    snd.stop()
+            except Exception:
+                pass
 
-    # --- HÀM PLAY AN TOÀN ---
+    # --- PLAY AN TOÀN: seek về 0 trước khi play ---
     def safe_play(self, sound):
         try:
             if sound:
-                sound.stop()
+                if sound.state == 'play':
+                    sound.stop()
+                sound.seek(0)
                 sound.play()
         except Exception:
             pass
 
     # --- TAB NUMBERS ---
     def setup_numbers(self):
-        # FIX: Dừng hết trước, chỉ play click
         self.stop_all_sounds()
         self.safe_play(self.snd_click)
-        
         val = self.root.ids.max_input.text
         if val and val.isdigit() and int(val) > 0:
             self.available_numbers = list(range(1, int(val) + 1))
@@ -411,10 +415,8 @@ class StevenRandomApp(MDApp):
 
     # --- TAB NAMES ---
     def setup_names(self):
-        # FIX: Dừng hết trước, chỉ play click
         self.stop_all_sounds()
         self.safe_play(self.snd_click)
-        
         raw_text = self.root.ids.names_input.text
         names_list = [n.strip() for n in raw_text.split('\n') if n.strip()]
         if names_list:
@@ -444,7 +446,6 @@ class StevenRandomApp(MDApp):
     def _animate_values(self, dt):
         self.animation_ticks += 1
 
-        # FIX: Dừng play spin ở tick cuối để tránh chồng âm với _finish_draw
         if self.animation_ticks < 19 and self.animation_ticks % 2 == 0:
             self.safe_play(self.snd_spin)
         
@@ -458,7 +459,6 @@ class StevenRandomApp(MDApp):
             self._finish_draw()
 
     def _finish_draw(self):
-        # FIX: Stop spin trước, delay win sound để đảm bảo spin đã dừng hẳn
         if self.snd_spin: self.snd_spin.stop()
         Clock.schedule_once(lambda dt: self.safe_play(self.snd_win), 0.1)
 
@@ -479,7 +479,6 @@ class StevenRandomApp(MDApp):
 
     # --- TAB VÒNG QUAY ---
     def start_wheel(self):
-        # FIX: Dừng hết trước, chỉ play click rồi mới play spin
         self.stop_all_sounds()
         self.safe_play(self.snd_click)
 
@@ -495,8 +494,8 @@ class StevenRandomApp(MDApp):
         
         self.root.ids.wheel_btn.disabled = True
         self.root.ids.wheel_result_label.text = "SPINNING..."
-        
-        # Delay nhỏ để click sound phát xong trước khi spin bắt đầu
+
+        # Delay để click phát xong trước khi spin bắt đầu
         Clock.schedule_once(lambda dt: self.safe_play(self.snd_spin), 0.15)
 
         winner_idx = random.randint(0, len(items) - 1)
@@ -514,7 +513,6 @@ class StevenRandomApp(MDApp):
         anim.start(gw)
 
     def _finish_wheel(self, *args):
-        # FIX: Stop spin trước, delay win sound để đảm bảo spin đã dừng hẳn
         if self.snd_spin: self.snd_spin.stop()
         Clock.schedule_once(lambda dt: self.safe_play(self.snd_win), 0.1)
         self.root.ids.wheel_result_label.text = self.final_chosen
@@ -522,10 +520,8 @@ class StevenRandomApp(MDApp):
 
     # --- TAB CHIA ĐỘI ---
     def split_teams(self):
-        # FIX: Dừng hết trước, chỉ play click
         self.stop_all_sounds()
         self.safe_play(self.snd_click)
-
         raw_text = self.root.ids.team_names_input.text
         names_list = [n.strip() for n in raw_text.split('\n') if n.strip()]
         team_count_str = self.root.ids.team_count_input.text
