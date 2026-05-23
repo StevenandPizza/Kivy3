@@ -372,9 +372,9 @@ class StevenRandomApp(MDApp):
         self.theme_cls.theme_style = "Light"
         
         # FIX: Load riêng từng file, độc lập nhau
-        self.snd_click = SoundLoader.load('click.mp3')
-        self.snd_win   = SoundLoader.load('win.mp3')
-        self.snd_spin  = SoundLoader.load('spin.mp3')
+        self.snd_click = SoundLoader.load('click.ogg')
+        self.snd_win   = SoundLoader.load('win.ogg')
+        self.snd_spin  = SoundLoader.load('spin.ogg')
 
         print(f"[AUDIO] click={self.snd_click}, win={self.snd_win}, spin={self.snd_spin}")
             
