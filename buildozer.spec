@@ -13,8 +13,7 @@ package.domain = org.steven
 source.dir = .
 
 # (list) Source files to include
-source.include_exts = py,png,jpg,kv,atlas,mp3,wav
-
+source.include_exts = py,png,jpg,kv,atlas,ogg
 # Biểu tượng ứng dụng
 icon.filename = %(source.dir)s/icon.png
 icon.adaptive_foreground.filename = %(source.dir)s/icon.png
