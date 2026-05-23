@@ -43,23 +43,31 @@ jobs:
       - name: Build APK
         run: buildozer android release
 
-      - name: Install Android build tools
+      - name: Sign APK manually
         run: |
           $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "build-tools;35.0.0"
 
-      - name: Sign APK
-        uses: noriban/sign-android-release@v4
-        id: sign_app
-        with:
-          releaseDirectory: bin
-          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-          buildToolsVersion: 35.0.0
+          BUILD_TOOLS=$ANDROID_SDK_ROOT/build-tools/35.0.0
+          APK=$(find bin -name "*.apk" | head -1)
+          ALIGNED_APK="${APK%.apk}-aligned.apk"
+          SIGNED_APK="${APK%.apk}-signed.apk"
+
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > keystore.jks
+
+          $BUILD_TOOLS/zipalign -v 4 "$APK" "$ALIGNED_APK"
+
+          $BUILD_TOOLS/apksigner sign \
+            --ks keystore.jks \
+            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+            --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+            --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
+            --out "$SIGNED_APK" \
+            "$ALIGNED_APK"
+
+          echo "SIGNED_APK=$SIGNED_APK" >> $GITHUB_ENV
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: RandomSTEVEN-APK-Signed
-          path: ${{steps.sign_app.outputs.signedReleaseFile}}
+          path: ${{ env.SIGNED_APK }}
