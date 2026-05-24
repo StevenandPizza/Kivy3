@@ -87,6 +87,8 @@ class RouletteGraphic(FloatLayout):
 
         for i, item in enumerate(self.items):
             current_angle = i * A + (A / 2) + self.spin_angle
+            # --- THÊM DÒNG NÀY: Đồng bộ hệ trục Kivy (12h) sang Toán học (3h) ---
+            math_angle = 90 - current_angle
             rad = math.radians(current_angle)
             
             # ==========================================
