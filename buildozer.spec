@@ -14,19 +14,19 @@ source.dir = .
 
 # (list) Source files to include
 source.include_exts = py,png,jpg,kv,atlas,ogg
-
+presplash.filename = %(source.dir)s/blank.png
 # Biểu tượng ứng dụng
 icon.filename = %(source.dir)s/icon.png
-# Dùng chung luôn file ảnh của icon làm màn hình chờ
-presplash.filename = %(source.dir)s/icon.png
+
 # Đổ màu nền xung quanh cái logo (Ví dụ #FFFFFF là màu trắng, #000000 là màu đen)
-presplash.color = #FFFFFF
+presplash.color = #F5F7FA
+android.presplash_color = #F5F7FA 
 
 #icon.adaptive_foreground.filename = %(source.dir)s/icon.png
 #icon.adaptive_background.filename = %(source.dir)s/icon.png
 
 # Phiên bản
-version = 1.3
+version = 1.4
 
 # (list) Application requirements
 # SỬA LẠI: Chốt cứng bản kivymd 2.0.1.dev0 để không văng app
