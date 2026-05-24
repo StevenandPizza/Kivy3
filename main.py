@@ -122,6 +122,7 @@ MDScreen:
             name: 'tab_number'
             text: 'Numbers'
             icon: 'numeric'
+            md_bg_color: 0.96, 0.97, 0.98, 1
             MDBoxLayout:
                 orientation: 'vertical'
                 padding: dp(20)
@@ -192,6 +193,7 @@ MDScreen:
             name: 'tab_name'
             text: 'Names'
             icon: 'account-star'
+            md_bg_color: 0.96, 0.97, 0.98, 1
             MDBoxLayout:
                 orientation: 'vertical'
                 padding: dp(20)
@@ -252,6 +254,7 @@ MDScreen:
             name: 'tab_wheel'
             text: 'Wheel'
             icon: 'sync-circle'
+            md_bg_color: 0.96, 0.97, 0.98, 1
             MDBoxLayout:
                 orientation: 'vertical'
                 padding: dp(20)
@@ -310,6 +313,7 @@ MDScreen:
             name: 'tab_team'
             text: 'Teams'
             icon: 'account-group'
+            md_bg_color: 0.96, 0.97, 0.98, 1
             MDBoxLayout:
                 orientation: 'vertical'
                 padding: dp(20)
