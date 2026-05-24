@@ -26,7 +26,7 @@ presplash.color = #FFFFFF
 #icon.adaptive_background.filename = %(source.dir)s/icon.png
 
 # Phiên bản
-version = 1.2
+version = 1.3
 
 # (list) Application requirements
 # SỬA LẠI: Chốt cứng bản kivymd 2.0.1.dev0 để không văng app
