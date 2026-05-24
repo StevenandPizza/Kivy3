@@ -21,7 +21,7 @@ icon.adaptive_foreground.filename = %(source.dir)s/icon.png
 icon.adaptive_background.filename = %(source.dir)s/icon.png
 
 # Phiên bản
-version = 1.0
+version = 1.1
 
 # (list) Application requirements
 # SỬA LẠI: Chốt cứng bản kivymd 2.0.1.dev0 để không văng app
