@@ -370,7 +370,7 @@ class StevenRandomApp(MDApp):
     def build(self):
         self.theme_cls.primary_palette = "Blue"
         self.theme_cls.theme_style = "Light"
-        
+        Window.clearcolor = (0.96, 0.97, 0.98, 1)
         # FIX: Load riêng từng file, độc lập nhau
         self.snd_click = SoundLoader.load('click.ogg')
         self.snd_win   = SoundLoader.load('win.ogg')
