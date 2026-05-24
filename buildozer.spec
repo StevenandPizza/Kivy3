@@ -17,8 +17,13 @@ source.include_exts = py,png,jpg,kv,atlas,ogg
 
 # Biểu tượng ứng dụng
 icon.filename = %(source.dir)s/icon.png
-icon.adaptive_foreground.filename = %(source.dir)s/icon.png
-icon.adaptive_background.filename = %(source.dir)s/icon.png
+# Dùng chung luôn file ảnh của icon làm màn hình chờ
+presplash.filename = %(source.dir)s/icon.png
+# Đổ màu nền xung quanh cái logo (Ví dụ #FFFFFF là màu trắng, #000000 là màu đen)
+presplash.color = #FFFFFF
+
+#icon.adaptive_foreground.filename = %(source.dir)s/icon.png
+#icon.adaptive_background.filename = %(source.dir)s/icon.png
 
 # Phiên bản
 version = 1.2
