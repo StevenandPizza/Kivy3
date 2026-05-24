@@ -88,7 +88,13 @@ class RouletteGraphic(FloatLayout):
         for i, item in enumerate(self.items):
             current_angle = i * A + (A / 2) + self.spin_angle
             rad = math.radians(current_angle)
-            r = self.width * 0.35
+            
+            # ==========================================
+            # FIX LỖI CHỮ SÁT RÌA: Giảm từ 0.35 xuống 0.25 
+            # để kéo chữ vào chính giữa ô vòng quay
+            # ==========================================
+            r = self.width * 0.25 
+            
             cx = self.center_x + r * math.cos(rad)
             cy = self.center_y + r * math.sin(rad)
             
