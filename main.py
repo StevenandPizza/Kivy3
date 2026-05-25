@@ -24,25 +24,22 @@ except ImportError:
     vibrator = None
 
 # ==========================================
-# [PHẦN 1] THIẾT KẾ MÀN HÌNH CHÀO CẦU KÌ (Fake Splash Screen)
+# [PHẦN 1] MÀN HÌNH CHÀO (FAKE SPLASH SCREEN)
 # ==========================================
-# Sếp có thể thay đổi hoạt ảnh, thêm bớt chữ tùy thích ở đây.
 class FakeSplashScreen(MDScreen):
     progress_val = NumericProperty(0)
     status_text = StringProperty("Đang khởi tạo tài nguyên...")
 
     def on_enter(self, *args):
-        # Khi màn hình này hiện lên, chúng ta bắt đầu diễn hoạt ảnh.
-        
-        # 1. Hoạt ảnh: Làm cho cái Logo ở giữa nhấp nháy Fade in/out
+        # Hoạt ảnh nhấp nháy Logo
         logo_anim = Animation(opacity=0.5, duration=0.8) + Animation(opacity=1, duration=0.8)
         logo_anim.repeat = True
         logo_anim.start(self.ids.splash_logo)
 
-        # 2. Hoạt ảnh: Tăng giá trị thanh loading từ 0 lên 100
+        # Thanh tiến trình chạy
         Clock.schedule_interval(self._update_progress, 0.05)
         
-        # 3. Hoạt ảnh: Đổi dòng chữ status theo thời gian
+        # Đổi chữ trạng thái
         Clock.schedule_once(self._change_status_1, 1.5)
         Clock.schedule_once(self._change_status_2, 3.0)
         Clock.schedule_once(self._change_status_3, 4.0)
@@ -51,7 +48,6 @@ class FakeSplashScreen(MDScreen):
         self.progress_val += 1
         if self.progress_val >= 100:
             Clock.unschedule(self._update_progress)
-            # Khi loading xong, chúng ta gọi App để chuyển màn hình
             app = MDApp.get_running_app()
             app.finish_splash()
 
@@ -59,15 +55,13 @@ class FakeSplashScreen(MDScreen):
     def _change_status_2(self, dt): self.status_text = "Sắp xong rồi sếp ơi..."
     def _change_status_3(self, dt): self.status_text = "Hoàn tất! Đang vào..."
 
-# [PHẦN 1.1] GIAO DIỆN KV CHO MÀN HÌNH CHÀO
+# Đã fix triệt để lỗi văng app do cú pháp Kivy KV
 fake_splash_kv = '''
 <FakeSplashScreen>:
     name: 'fake_splash'
-    # Màu nền phải trùng với màu nền app sếp định dùng
     md_bg_color: 0.96, 0.97, 0.98, 1
 
     MDFloatLayout:
-        # 1. Cái Logo ở chính giữa
         FitImage:
             id: splash_logo
             source: 'icon.png'
@@ -75,7 +69,6 @@ fake_splash_kv = '''
             size: dp(150), dp(150)
             pos_hint: {"center_x": .5, "center_y": .6}
 
-        # 2. Thanh tải
         MDProgressBar:
             id: progress_bar
             value: root.progress_val
@@ -84,7 +77,6 @@ fake_splash_kv = '''
             theme_text_color: "Custom"
             color: app.theme_cls.primary_color
             
-        # 3. Dòng chữ trạng thái
         MDLabel:
             id: status_label
             text: root.status_text
@@ -94,20 +86,11 @@ fake_splash_kv = '''
             size_hint_y: None
             height: dp(30)
             pos_hint: {"center_x": .5, "center_y": .35}
-            markup: True
-            # Hiệu ứng nhấp nháy cho text
-            canvas.before:
-                Color:
-                    rgba: 1, 1, 1, (math.sin(Window.time * 5) + 1) / 2
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
 '''
-# Chúng ta nạp riêng cái KV giao diện loading này vào
 Builder.load_string(fake_splash_kv)
 
 # ==========================================
-# [PHẦN 2] CÁC CLASS HỖ TRỢ & ĐỒ HỌA (Giữ nguyên)
+# [PHẦN 2] CÁC CLASS HỖ TRỢ & ĐỒ HỌA
 # ==========================================
 class RotatedLabel(Label):
     angle = NumericProperty(0)
@@ -168,8 +151,12 @@ class RouletteGraphic(FloatLayout):
 
         for i, item in enumerate(self.items):
             current_angle = i * A + (A / 2) + self.spin_angle
-            rad = math.radians(current_angle)
-            r = self.width * 0.35
+            
+            # FIX LỖI CHỮ LỆCH VÀ SÁT RÌA
+            math_angle = 90 - current_angle
+            rad = math.radians(math_angle)
+            r = self.width * 0.25 
+            
             cx = self.center_x + r * math.cos(rad)
             cy = self.center_y + r * math.sin(rad)
             
@@ -182,13 +169,12 @@ class RouletteGraphic(FloatLayout):
             self.add_widget(lbl)
 
 # ==========================================
-# [PHẦN 3] CLASS MÀN HÌNH CHÍNH (Đã sửa lỗi vệt đen & nạp màu nền)
+# [PHẦN 3] CLASS MÀN HÌNH CHÍNH & GIAO DIỆN
 # ==========================================
 class MainScreen(MDScreen):
     pass
 
-# [PHẦN 3.1] GIAO DIỆN KV CHÍNH (Đã được chuyển thành Widget riêng)
-# Chúng ta nạp màu nền '0.96, 0.97, 0.98, 1' vào CẢ 4 MDBottomNavigationItem
+# Đã fix lỗi lằn đen bằng cách đổ màu nền cho TẤT CẢ Tab
 main_screen_kv = '''
 <MainScreen>:
     name: 'main_app'
@@ -204,7 +190,6 @@ main_screen_kv = '''
                 name: 'tab_number'
                 text: 'Numbers'
                 icon: 'numeric'
-                # Ép màu nền để không bị vệt đen chuyển tab
                 md_bg_color: 0.96, 0.97, 0.98, 1
                 
                 MDBoxLayout:
@@ -452,10 +437,10 @@ main_screen_kv = '''
 Builder.load_string(main_screen_kv)
 
 # ==========================================
-# [PHẦN 4] CLASS APP CHÍNH (CẢI TỔ CẤU TRÚC: Dùng ScreenManager)
+# [PHẦN 4] CLASS APP CHÍNH & LOGIC
 # ==========================================
 class StevenRandomApp(MDApp):
-    sm = ObjectProperty(None) # Quản lý màn hình
+    sm = ObjectProperty(None)
     
     available_numbers = []
     drawn_numbers = []
@@ -474,37 +459,28 @@ class StevenRandomApp(MDApp):
         self.theme_cls.primary_palette = "Blue"
         self.theme_cls.theme_style = "Light"
         
-        # [QUAN TRỌNG] FIX vệt đen CODE: Đổ màu nền Window sáng
+        # FIX VỆT ĐEN: Đổ màu nền Window gốc
         Window.clearcolor = (0.96, 0.97, 0.98, 1)
         
-        # FIX: Load riêng từng file độc lập
+        # LOAD ÂM THANH
         self.snd_click = SoundLoader.load('click.ogg')
         self.snd_win   = SoundLoader.load('win.ogg')
         self.snd_spin  = SoundLoader.load('spin.ogg')
 
-        # Cấu trúc App dùng ScreenManager
-        # Dùng hiệu ứng 'Fade' (mờ dần) để chuyển màn hình loading sang chính
+        # Cấu trúc ScreenManager với hiệu ứng mờ dần
         self.sm = ScreenManager(transition=FadeTransition())
-        
-        # Thêm 2 màn hình vào trình quản lý
         self.sm.add_widget(FakeSplashScreen())
         self.sm.add_widget(MainScreen())
-        
-        # Luôn luôn khởi động vào màn hình Loading đầu tiên
         self.sm.current = 'fake_splash'
             
         return self.sm
 
-    # --- HÀM TỐT NGHIỆP: Khi loading xong, gọi hàm này ---
     def finish_splash(self):
-        # Chuyển Screen sang 'main_app' (MainScreen)
+        # Chuyển cảnh khi chạy xong Loading
         self.sm.current = 'main_app'
 
-    # ==========================================
-    # PHẦN LOGIC RANDOM (Giữ nguyên)
-    # ==========================================
     def get_main_ids(self):
-        # Vì cấu trúc MDApp thay đổi, chúng ta phải tìm ids theo cách mới
+        # Hàm hỗ trợ lấy ID từ MainScreen
         return self.sm.get_screen('main_app').ids
 
     def stop_all_sounds(self):
