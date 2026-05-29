@@ -31,18 +31,28 @@ except ImportError:
 # ==========================================
 class FakeSplashScreen(MDScreen):
     progress_val = NumericProperty(0)
-    status_text = StringProperty("Initializing application...")
+    status_text = StringProperty("") # Bắt đầu để trống để tránh giật chữ
 
     def on_enter(self, *args):
-        logo_anim = Animation(opacity=0.6, duration=0.8) + Animation(opacity=1, duration=0.8)
-        logo_anim.repeat = True
-        logo_anim.start(self.ids.splash_logo)
+        # 1. Hiệu ứng Fade-in: Từ từ hiện nguyên hình mượt mà trong 0.8 giây
+        fade_in = Animation(opacity=1, duration=0.8)
         
-        Clock.schedule_interval(self._update_progress, 0.04)
-        
-        Clock.schedule_once(self._change_status_1, 1.2)
-        Clock.schedule_once(self._change_status_2, 2.5)
-        Clock.schedule_once(self._change_status_3, 3.5)
+        # Khi hiện xong thì mới bắt đầu các hiệu ứng chớp nháy và thanh tải
+        def start_loading(*args):
+            # Nhấp nháy logo nhẹ nhàng
+            logo_anim = Animation(opacity=0.6, duration=0.8) + Animation(opacity=1, duration=0.8)
+            logo_anim.repeat = True
+            logo_anim.start(self.ids.splash_logo)
+            
+            # Khởi động thanh loading và chữ
+            self.status_text = "Initializing application..."
+            Clock.schedule_interval(self._update_progress, 0.04)
+            Clock.schedule_once(self._change_status_1, 1.2)
+            Clock.schedule_once(self._change_status_2, 2.5)
+            Clock.schedule_once(self._change_status_3, 3.5)
+
+        fade_in.bind(on_complete=start_loading)
+        fade_in.start(self.ids.splash_layout) # Kích hoạt từ từ hiện lên
 
     def _update_progress(self, dt):
         self.progress_val += 1
@@ -60,6 +70,9 @@ fake_splash_kv = '''
     md_bg_color: 0.96, 0.97, 0.98, 1
 
     MDFloatLayout:
+        id: splash_layout
+        opacity: 0  # <--- ĐIỂM MẤU CHỐT: Bắt đầu tàng hình hoàn toàn
+
         FitImage:
             id: splash_logo
             source: 'icon.png'
