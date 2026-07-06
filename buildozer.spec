@@ -72,8 +72,8 @@ android.copy_libs = 1
 # (str) Android logcat filters
 android.logcat_filters = *:S python:D
 
-# Xuất file aab đúng chuẩn để tải lên Google Play
-android.release_artifact = aab
+# Xuất file APK để cài trực tiếp trên điện thoại
+android.release_artifact = apk
 
 # ==========================================
 # Buildozer settings
