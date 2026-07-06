@@ -184,10 +184,18 @@ main_screen_kv = '''
     name: 'main_app'
     md_bg_color: 0.96, 0.97, 0.98, 1
 
+    canvas.before:
+        Color:
+            rgba: 0.96, 0.97, 0.98, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
     MDBottomNavigation:
         panel_color: 1, 1, 1, 1
         selected_color_background: app.theme_cls.primary_color
         text_color_active: app.theme_cls.primary_color
+        anim_duration: 0
 
         MDBottomNavigationItem:
             name: 'tab_number'
