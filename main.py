@@ -15,7 +15,6 @@ import random
 from kivy.utils import platform
 from kivy.uix.screenmanager import ScreenManager, FadeTransition
 
-# Cố định màu nền cửa sổ ngay lập tức để tránh vệt đen từ lõi
 Window.clearcolor = (0.96, 0.97, 0.98, 1)
 
 if platform not in ('android', 'ios'):
@@ -26,43 +25,55 @@ try:
 except ImportError:
     vibrator = None
 
+
 # ==========================================
-# [PHẦN 1] MÀN HÌNH CHÀO (ENGLISH VERSION)
+# SPLASH SCREEN
 # ==========================================
 class FakeSplashScreen(MDScreen):
     progress_val = NumericProperty(0)
-    status_text = StringProperty("") # Bắt đầu để trống để tránh giật chữ
+    status_text = StringProperty("")
+    _clocks = []
 
     def on_enter(self, *args):
-        # 1. Hiệu ứng Fade-in: Từ từ hiện nguyên hình mượt mà trong 0.8 giây
         fade_in = Animation(opacity=1, duration=0.8)
-        
-        # Khi hiện xong thì mới bắt đầu các hiệu ứng chớp nháy và thanh tải
+
         def start_loading(*args):
-            # Nhấp nháy logo nhẹ nhàng
             logo_anim = Animation(opacity=0.6, duration=0.8) + Animation(opacity=1, duration=0.8)
             logo_anim.repeat = True
             logo_anim.start(self.ids.splash_logo)
-            
-            # Khởi động thanh loading và chữ
+
             self.status_text = "Initializing application..."
-            Clock.schedule_interval(self._update_progress, 0.04)
-            Clock.schedule_once(self._change_status_1, 1.2)
-            Clock.schedule_once(self._change_status_2, 2.5)
-            Clock.schedule_once(self._change_status_3, 3.5)
+            c1 = Clock.schedule_interval(self._update_progress, 0.04)
+            c2 = Clock.schedule_once(self._change_status_1, 1.2)
+            c3 = Clock.schedule_once(self._change_status_2, 2.5)
+            c4 = Clock.schedule_once(self._change_status_3, 3.5)
+            self._clocks = [c1, c2, c3, c4]
 
         fade_in.bind(on_complete=start_loading)
-        fade_in.start(self.ids.splash_layout) # Kích hoạt từ từ hiện lên
+        fade_in.start(self.ids.splash_layout)
+
+    def cleanup(self):
+        for c in self._clocks:
+            try:
+                Clock.unschedule(c)
+            except Exception:
+                pass
+        self._clocks.clear()
+        try:
+            self.ids.splash_logo.anim_running = False
+        except Exception:
+            pass
 
     def _update_progress(self, dt):
         self.progress_val += 1
         if self.progress_val >= 100:
-            Clock.unschedule(self._update_progress)
+            self.cleanup()
             MDApp.get_running_app().finish_splash()
 
     def _change_status_1(self, dt): self.status_text = "Optimizing performance..."
     def _change_status_2(self, dt): self.status_text = "Synchronizing data..."
     def _change_status_3(self, dt): self.status_text = "Ready to launch!"
+
 
 fake_splash_kv = '''
 <FakeSplashScreen>:
@@ -71,7 +82,7 @@ fake_splash_kv = '''
 
     MDFloatLayout:
         id: splash_layout
-        opacity: 0  # <--- ĐIỂM MẤU CHỐT: Bắt đầu tàng hình hoàn toàn
+        opacity: 0
 
         FitImage:
             id: splash_logo
@@ -86,7 +97,7 @@ fake_splash_kv = '''
             size_hint_x: 0.6
             pos_hint: {"center_x": .5, "center_y": .42}
             color: app.theme_cls.primary_color
-            
+
         MDLabel:
             text: root.status_text
             font_style: 'Caption'
@@ -98,70 +109,75 @@ fake_splash_kv = '''
 '''
 Builder.load_string(fake_splash_kv)
 
+
 # ==========================================
-# [PHẦN 2] ĐỒ HỌA VÒNG QUAY (KHÓA ĐỒNG BỘ CANVAS)
+# ROULETTE GRAPHIC - OPTIMIZED
 # ==========================================
 class RouletteGraphic(FloatLayout):
     spin_angle = NumericProperty(0)
     items = ListProperty([])
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Khóa origin vào chính giữa để xoay nguyên khối
+        self._wheel_drawn = False
+        self._labels = []
+        self._ellipse_count = 0
         with self.canvas.before:
             PushMatrix()
             self.rot = Rotate(angle=0, origin=self.center)
         with self.canvas.after:
             PopMatrix()
-        self.bind(spin_angle=self._update_rotation, center=self._update_layout, size=self._update_layout)
+        self.bind(spin_angle=self._update_rotation, center=self._update_origin)
 
     def _update_rotation(self, *args):
         self.rot.angle = self.spin_angle
 
-    def _update_layout(self, *args):
+    def _update_origin(self, *args):
         self.rot.origin = self.center
-        if self.items:
-            self.draw_wheel(self.items)
 
     def draw_wheel(self, items):
         self.items = items
+        self._labels.clear()
         self.clear_widgets()
         self.canvas.clear()
-        
-        if not self.items: return
-        
+
+        if not self.items:
+            self._wheel_drawn = False
+            return
+
         N = len(self.items)
         A = 360.0 / N
-        colors = [(0.9, 0.3, 0.3, 1), (0.2, 0.6, 0.8, 1), (0.9, 0.7, 0.1, 1), 
-                  (0.2, 0.7, 0.4, 1), (0.6, 0.3, 0.7, 1), (0.9, 0.5, 0.2, 1)]
-                  
+        colors = [
+            (0.9, 0.3, 0.3, 1), (0.2, 0.6, 0.8, 1), (0.9, 0.7, 0.1, 1),
+            (0.2, 0.7, 0.4, 1), (0.6, 0.3, 0.7, 1), (0.9, 0.5, 0.2, 1),
+        ]
+
         with self.canvas:
             for i in range(N):
                 Color(*colors[i % len(colors)])
-                Ellipse(pos=self.pos, size=self.size, angle_start=i*A, angle_end=(i+1)*A)
+                Ellipse(pos=self.pos, size=self.size, angle_start=i * A, angle_end=(i + 1) * A)
 
         for i, item in enumerate(self.items):
             angle_pos = i * A + (A / 2)
             rad = math.radians(90 - angle_pos)
-            r = self.width * 0.25 
-            
+            r = self.width * 0.25
+
             cx = self.center_x + r * math.cos(rad)
             cy = self.center_y + r * math.sin(rad)
-            
-            lbl = Label(text=str(item)[:8], font_size='14sp', bold=True, color=(1,1,1,1),
-                        size_hint=(None, None), size=(dp(80), dp(40)))
-            
-            with lbl.canvas.before:
-                PushMatrix()
-                Rotate(angle=angle_pos, origin=(cx, cy))
-            with lbl.canvas.after:
-                PopMatrix()
-                
+
+            lbl = Label(
+                text=str(item)[:8], font_size='14sp', bold=True, color=(1, 1, 1, 1),
+                size_hint=(None, None), size=(dp(80), dp(40))
+            )
             lbl.center = (cx, cy)
             self.add_widget(lbl)
+            self._labels.append(lbl)
+
+        self._wheel_drawn = True
+
 
 # ==========================================
-# [PHẦN 3] GIAO DIỆN CHÍNH (FULL CHỨC NĂNG, KHÔNG LẰN ĐEN)
+# MAIN SCREEN KV
 # ==========================================
 main_screen_kv = '''
 <MainScreen>:
@@ -178,7 +194,7 @@ main_screen_kv = '''
             text: 'Numbers'
             icon: 'numeric'
             md_bg_color: 0.96, 0.97, 0.98, 1
-            
+
             MDBoxLayout:
                 orientation: 'vertical'
                 padding: dp(20)
@@ -209,7 +225,7 @@ main_screen_kv = '''
                     orientation: 'vertical'
                     padding: dp(10)
                     radius: [15, 15, 15, 15]
-                    elevation: 1
+                    elevation: 2
                     md_bg_color: 1, 1, 1, 1
                     MDLabel:
                         id: result_label
@@ -253,7 +269,7 @@ main_screen_kv = '''
             text: 'Names'
             icon: 'account-star'
             md_bg_color: 0.96, 0.97, 0.98, 1
-            
+
             MDBoxLayout:
                 orientation: 'vertical'
                 padding: dp(20)
@@ -285,7 +301,7 @@ main_screen_kv = '''
                     orientation: 'vertical'
                     padding: dp(10)
                     radius: [15, 15, 15, 15]
-                    elevation: 1
+                    elevation: 2
                     md_bg_color: 1, 1, 1, 1
                     size_hint_y: 0.4
                     MDLabel:
@@ -317,7 +333,7 @@ main_screen_kv = '''
             text: 'Wheel'
             icon: 'sync-circle'
             md_bg_color: 0.96, 0.97, 0.98, 1
-            
+
             MDBoxLayout:
                 orientation: 'vertical'
                 padding: dp(20)
@@ -378,7 +394,7 @@ main_screen_kv = '''
             text: 'Teams'
             icon: 'account-group'
             md_bg_color: 0.96, 0.97, 0.98, 1
-            
+
             MDBoxLayout:
                 orientation: 'vertical'
                 padding: dp(20)
@@ -431,21 +447,28 @@ main_screen_kv = '''
 '''
 Builder.load_string(main_screen_kv)
 
+
 class MainScreen(MDScreen):
     pass
 
+
+# ==========================================
+# MAIN APP - OPTIMIZED
+# ==========================================
 class StevenRandomApp(MDApp):
     sm = ObjectProperty(None)
-    
+    _main_ids = None
+    _anim_clock = None
+    _sounds_loaded = False
+
     available_numbers = []
     drawn_numbers = []
     available_names = []
-    wheel_items = []
-    
+
     animation_ticks = 0
     final_chosen = None
     current_mode = 'number'
-    
+
     snd_click = None
     snd_win = None
     snd_spin = None
@@ -453,25 +476,32 @@ class StevenRandomApp(MDApp):
     def build(self):
         self.theme_cls.primary_palette = "Blue"
         self.theme_cls.theme_style = "Light"
-        
-        self.snd_click = SoundLoader.load('click.ogg')
-        self.snd_win   = SoundLoader.load('win.ogg')
-        self.snd_spin  = SoundLoader.load('spin.ogg')
 
         self.sm = ScreenManager(transition=FadeTransition())
         self.sm.add_widget(FakeSplashScreen())
         self.sm.add_widget(MainScreen())
         self.sm.current = 'fake_splash'
-            
+
         return self.sm
+
+    def _ensure_sounds(self):
+        if self._sounds_loaded:
+            return
+        self.snd_click = SoundLoader.load('click.ogg')
+        self.snd_win = SoundLoader.load('win.ogg')
+        self.snd_spin = SoundLoader.load('spin.ogg')
+        self._sounds_loaded = True
 
     def finish_splash(self):
         self.sm.current = 'main_app'
 
-    def get_main_ids(self):
-        return self.sm.get_screen('main_app').ids
+    def _get_ids(self):
+        if self._main_ids is None:
+            self._main_ids = self.sm.get_screen('main_app').ids
+        return self._main_ids
 
     def stop_all_sounds(self):
+        self._ensure_sounds()
         for snd in [self.snd_spin, self.snd_win, self.snd_click]:
             try:
                 if snd and snd.state == 'play':
@@ -490,7 +520,7 @@ class StevenRandomApp(MDApp):
             pass
 
     def setup_numbers(self):
-        ids = self.get_main_ids()
+        ids = self._get_ids()
         self.stop_all_sounds()
         self.safe_play(self.snd_click)
         val = ids.max_input.text
@@ -503,7 +533,7 @@ class StevenRandomApp(MDApp):
             ids.draw_btn.disabled = False
 
     def setup_names(self):
-        ids = self.get_main_ids()
+        ids = self._get_ids()
         self.stop_all_sounds()
         self.safe_play(self.snd_click)
         raw_text = ids.names_input.text
@@ -515,42 +545,54 @@ class StevenRandomApp(MDApp):
             ids.name_draw_btn.disabled = False
 
     def start_draw_animation(self, mode):
-        ids = self.get_main_ids()
+        ids = self._get_ids()
         self.stop_all_sounds()
         self.safe_play(self.snd_click)
         self.current_mode = mode
 
         if mode == 'number':
-            if not self.available_numbers: return
+            if not self.available_numbers:
+                return
             ids.draw_btn.disabled = True
             self.final_chosen = random.choice(self.available_numbers)
         elif mode == 'name':
-            if not self.available_names: return
+            if not self.available_names:
+                return
             ids.name_draw_btn.disabled = True
             self.final_chosen = random.choice(self.available_names)
 
         self.animation_ticks = 0
-        Clock.schedule_interval(self._animate_values, 0.05)
+        self._cancel_animation()
+        self._anim_clock = Clock.schedule_interval(self._animate_values, 0.05)
+
+    def _cancel_animation(self):
+        if self._anim_clock is not None:
+            try:
+                Clock.unschedule(self._anim_clock)
+            except Exception:
+                pass
+            self._anim_clock = None
 
     def _animate_values(self, dt):
-        ids = self.get_main_ids()
+        ids = self._get_ids()
         self.animation_ticks += 1
 
         if self.animation_ticks < 19 and self.animation_ticks % 2 == 0:
             self.safe_play(self.snd_spin)
-        
+
         if self.current_mode == 'number':
             ids.result_label.text = str(random.choice(self.available_numbers))
         else:
             ids.name_result_label.text = random.choice(self.available_names)
-        
+
         if self.animation_ticks >= 20:
-            Clock.unschedule(self._animate_values)
+            self._cancel_animation()
             self._finish_draw()
 
     def _finish_draw(self):
-        ids = self.get_main_ids()
-        if self.snd_spin: self.snd_spin.stop()
+        ids = self._get_ids()
+        if self.snd_spin:
+            self.snd_spin.stop()
         Clock.schedule_once(lambda dt: self.safe_play(self.snd_win), 0.1)
 
         if self.current_mode == 'number':
@@ -569,20 +611,20 @@ class StevenRandomApp(MDApp):
             ids.name_draw_btn.disabled = False if self.available_names else True
 
     def start_wheel(self):
-        ids = self.get_main_ids()
+        ids = self._get_ids()
         self.stop_all_sounds()
         self.safe_play(self.snd_click)
 
         raw_text = ids.wheel_input.text
         items = [n.strip() for n in raw_text.split('\n') if n.strip()]
-        
+
         if len(items) < 2:
             ids.wheel_result_label.text = "Min 2 items!"
             return
-            
+
         gw = ids.graphic_wheel
         gw.draw_wheel(items)
-        
+
         ids.wheel_btn.disabled = True
         ids.wheel_result_label.text = "SPINNING..."
 
@@ -590,52 +632,49 @@ class StevenRandomApp(MDApp):
 
         winner_idx = random.randint(0, len(items) - 1)
         self.final_chosen = items[winner_idx]
-        
+
         N = len(items)
         A = 360.0 / N
         angle_of_winner = winner_idx * A + (A / 2)
-        
+
         current_spins = (gw.spin_angle // 360) * 360
-        
-        # ==========================================
-        # FIX LỖI SKIBIDI TRẢ RA RONALDO: 
-        # Xóa số 360 trừ đi, trả lại đúng góc của ô trúng thưởng
-        # ==========================================
         target_rotation = current_spins + (360 * random.randint(5, 8)) + angle_of_winner
-        
+
         anim = Animation(spin_angle=target_rotation, duration=4.0, transition='out_quad')
         anim.bind(on_complete=self._finish_wheel)
         anim.start(gw)
 
     def _finish_wheel(self, *args):
-        ids = self.get_main_ids()
-        if self.snd_spin: self.snd_spin.stop()
+        ids = self._get_ids()
+        if self.snd_spin:
+            self.snd_spin.stop()
         Clock.schedule_once(lambda dt: self.safe_play(self.snd_win), 0.1)
         ids.wheel_result_label.text = self.final_chosen
         ids.wheel_btn.disabled = False
 
     def split_teams(self):
-        ids = self.get_main_ids()
+        ids = self._get_ids()
         self.stop_all_sounds()
         self.safe_play(self.snd_click)
         raw_text = ids.team_names_input.text
         names_list = [n.strip() for n in raw_text.split('\n') if n.strip()]
         team_count_str = ids.team_count_input.text
-        
+
         if names_list and team_count_str.isdigit():
             team_count = int(team_count_str)
             random.shuffle(names_list)
             teams = {i: [] for i in range(team_count)}
             for index, name in enumerate(names_list):
                 teams[index % team_count].append(name)
-            
+
             result_text = ""
             for i in range(team_count):
-                result_text += f"[b]TEAM {i+1}:[/b]\n"
+                result_text += f"[b]TEAM {i + 1}:[/b]\n"
                 result_text += " • " + "\n • ".join(teams[i]) + "\n\n"
-            
+
             ids.team_result_label.markup = True
             ids.team_result_label.text = result_text
+
 
 if __name__ == '__main__':
     StevenRandomApp().run()
