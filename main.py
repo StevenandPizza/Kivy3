@@ -10,15 +10,17 @@ from kivy.properties import NumericProperty, ListProperty, ObjectProperty, Strin
 from kivy.graphics import Color, Ellipse, PushMatrix, PopMatrix, Rotate
 from kivy.uix.label import Label
 from kivy.core.audio import SoundLoader
+from kivy.uix.screenmanager import ScreenManager, NoTransition
+from kivy.utils import platform
+from kivy.graphics import RoundedRectangle
 import math
 import random
-from kivy.utils import platform
-from kivy.uix.screenmanager import ScreenManager, FadeTransition
+import os
 
 Window.clearcolor = (0.96, 0.97, 0.98, 1)
 
 if platform not in ('android', 'ios'):
-    Window.size = (400, 700)
+    Window.size = (400, 720)
 
 try:
     from plyer import vibrator
@@ -75,7 +77,7 @@ class FakeSplashScreen(MDScreen):
     def _change_status_3(self, dt): self.status_text = "Ready to launch!"
 
 
-fake_splash_kv = '''
+Builder.load_string('''
 <FakeSplashScreen>:
     name: 'fake_splash'
     md_bg_color: 0.96, 0.97, 0.98, 1
@@ -106,12 +108,11 @@ fake_splash_kv = '''
             size_hint_y: None
             height: dp(30)
             pos_hint: {"center_x": .5, "center_y": .38}
-'''
-Builder.load_string(fake_splash_kv)
+''')
 
 
 # ==========================================
-# ROULETTE GRAPHIC - OPTIMIZED
+# ROULETTE GRAPHIC
 # ==========================================
 class RouletteGraphic(FloatLayout):
     spin_angle = NumericProperty(0)
@@ -119,9 +120,7 @@ class RouletteGraphic(FloatLayout):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._wheel_drawn = False
         self._labels = []
-        self._ellipse_count = 0
         with self.canvas.before:
             PushMatrix()
             self.rot = Rotate(angle=0, origin=self.center)
@@ -142,7 +141,6 @@ class RouletteGraphic(FloatLayout):
         self.canvas.clear()
 
         if not self.items:
-            self._wheel_drawn = False
             return
 
         N = len(self.items)
@@ -173,13 +171,11 @@ class RouletteGraphic(FloatLayout):
             self.add_widget(lbl)
             self._labels.append(lbl)
 
-        self._wheel_drawn = True
-
 
 # ==========================================
-# MAIN SCREEN KV
+# MAIN SCREEN - COMPLETELY NEW UI
 # ==========================================
-main_screen_kv = '''
+main_kv = '''
 <MainScreen>:
     name: 'main_app'
     md_bg_color: 0.96, 0.97, 0.98, 1
@@ -191,269 +187,493 @@ main_screen_kv = '''
             pos: self.pos
             size: self.size
 
-    MDBottomNavigation:
-        panel_color: 1, 1, 1, 1
-        selected_color_background: app.theme_cls.primary_color
-        text_color_active: app.theme_cls.primary_color
-        anim_duration: 0
+    MDBoxLayout:
+        orientation: 'vertical'
+        spacing: 0
+        padding: 0
 
-        MDBottomNavigationItem:
-            name: 'tab_number'
-            text: 'Numbers'
-            icon: 'numeric'
-            md_bg_color: 0.96, 0.97, 0.98, 1
+        # ========== CONTENT - ScreenManager with NoTransition ==========
+        ScreenManager:
+            id: content_sm
+            transition: app.no_trans
 
-            MDBoxLayout:
-                orientation: 'vertical'
-                padding: dp(20)
-                spacing: dp(15)
+            Screen:
+                name: 'tab_number'
                 md_bg_color: 0.96, 0.97, 0.98, 1
-                MDLabel:
-                    text: 'LUCKY NUMBERS'
-                    font_style: 'H5'
-                    bold: True
-                    theme_text_color: 'Primary'
-                    halign: 'center'
-                    size_hint_y: None
-                    height: dp(30)
+
+                canvas.before:
+                    Color:
+                        rgba: 0.96, 0.97, 0.98, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+
                 MDBoxLayout:
-                    size_hint_y: None
-                    height: dp(60)
-                    spacing: dp(10)
-                    MDTextField:
-                        id: max_input
-                        hint_text: 'Enter max number'
-                        input_filter: 'int'
-                        halign: 'center'
-                    MDRaisedButton:
-                        text: 'SET UP'
-                        size_hint_y: 1
-                        on_release: app.setup_numbers()
-                MDCard:
                     orientation: 'vertical'
-                    padding: dp(10)
-                    radius: [15, 15, 15, 15]
-                    elevation: 2
-                    md_bg_color: 1, 1, 1, 1
+                    padding: [dp(20), dp(15), dp(20), dp(10)]
+                    spacing: dp(12)
+
                     MDLabel:
-                        id: result_label
-                        text: '?'
-                        font_style: 'H1'
-                        halign: 'center'
-                        theme_text_color: 'Custom'
-                        text_color: app.theme_cls.primary_color
+                        text: 'LUCKY NUMBERS'
+                        font_style: 'H5'
                         bold: True
-                    MDLabel:
-                        id: status_label
-                        text: 'Ready...'
+                        theme_text_color: 'Primary'
                         halign: 'center'
-                        theme_text_color: 'Secondary'
                         size_hint_y: None
-                        height: dp(30)
-                MDFillRoundFlatButton:
-                    id: draw_btn
-                    text: 'DRAW NOW'
-                    size_hint_x: 1
-                    size_hint_y: None
-                    height: dp(50)
-                    disabled: True
-                    on_release: app.start_draw_animation('number')
-                MDCard:
-                    padding: dp(15)
-                    radius: [10, 10, 10, 10]
-                    elevation: 1
-                    md_bg_color: 1, 1, 1, 1
-                    size_hint_y: 0.6
-                    ScrollView:
-                        MDLabel:
-                            id: history_label
-                            text: 'No history yet...'
-                            size_hint_y: None
-                            height: self.texture_size[1]
-                            text_size: self.width, None
+                        height: dp(36)
 
-        MDBottomNavigationItem:
-            name: 'tab_name'
-            text: 'Names'
-            icon: 'account-star'
-            md_bg_color: 0.96, 0.97, 0.98, 1
+                    MDBoxLayout:
+                        size_hint_y: None
+                        height: dp(54)
+                        spacing: dp(10)
 
-            MDBoxLayout:
-                orientation: 'vertical'
-                padding: dp(20)
-                spacing: dp(15)
+                        MDTextField:
+                            id: max_input
+                            hint_text: 'Enter max number'
+                            input_filter: 'int'
+                            halign: 'center'
+                            mode: "round"
+                            fill_color: 1, 1, 1, 1
+                            line_color_normal: 0.2, 0.5, 0.95, 0.4
+                            line_color_focus: 0.2, 0.5, 0.95, 1
+
+                        MDRaisedButton:
+                            text: 'SET UP'
+                            size_hint_x: 0.3
+                            size_hint_y: 1
+                            md_bg_color: 0.2, 0.5, 0.95, 1
+                            shadow_color: 0.2, 0.5, 0.95, 0.3
+                            elevation: 3
+                            on_release: app.setup_numbers()
+
+                    MDSeparator:
+                        height: dp(1)
+                        color: 0.9, 0.92, 0.94, 1
+
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: 0.35
+
+                        Widget:
+                            MDLabel:
+                                id: result_label
+                                text: '?'
+                                font_style: 'H1'
+                                halign: 'center'
+                                valign: 'middle'
+                                theme_text_color: 'Custom'
+                                text_color: 0.2, 0.5, 0.95, 1
+                                bold: True
+                                pos_hint: {"center_x": .5, "center_y": .6}
+
+                            MDLabel:
+                                id: status_label
+                                text: 'Ready...'
+                                halign: 'center'
+                                theme_text_color: 'Secondary'
+                                size_hint_y: None
+                                height: dp(24)
+                                pos_hint: {"center_x": .5, "center_y": .25}
+
+                    MDFillRoundFlatButton:
+                        id: draw_btn
+                        text: '  DRAW NOW  '
+                        font_size: '18sp'
+                        size_hint_x: 1
+                        size_hint_y: None
+                        height: dp(52)
+                        disabled: True
+                        md_bg_color: 0.2, 0.5, 0.95, 1
+                        shadow_color: 0.2, 0.5, 0.95, 0.4
+                        elevation: 4
+                        on_release: app.start_draw_animation('number')
+
+                    MDCard:
+                        padding: dp(12)
+                        radius: [12, 12, 12, 12]
+                        elevation: 1
+                        size_hint_y: 0.35
+                        md_bg_color: 1, 1, 1, 1
+
+                        ScrollView:
+                            MDLabel:
+                                id: history_label
+                                text: 'No history yet...'
+                                size_hint_y: None
+                                height: self.texture_size[1]
+                                text_size: self.width, None
+                                theme_text_color: 'Secondary'
+
+            Screen:
+                name: 'tab_name'
                 md_bg_color: 0.96, 0.97, 0.98, 1
-                MDLabel:
-                    text: 'RANDOM PICKER'
-                    font_style: 'H5'
-                    bold: True
-                    theme_text_color: 'Custom'
-                    text_color: 0.66, 0.33, 0.97, 1
-                    halign: 'center'
-                    size_hint_y: None
-                    height: dp(30)
-                MDTextField:
-                    id: names_input
-                    hint_text: 'Enter names'
-                    helper_text: '(One name per line)'
-                    helper_text_mode: 'persistent'
-                    mode: "rectangle"
-                    multiline: True
-                    size_hint_y: 0.4
-                MDRaisedButton:
-                    text: 'LOAD LIST'
-                    size_hint_x: 1
-                    md_bg_color: 0.66, 0.33, 0.97, 1
-                    on_release: app.setup_names()
-                MDCard:
+
+                canvas.before:
+                    Color:
+                        rgba: 0.96, 0.97, 0.98, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+
+                MDBoxLayout:
                     orientation: 'vertical'
-                    padding: dp(10)
-                    radius: [15, 15, 15, 15]
-                    elevation: 2
-                    md_bg_color: 1, 1, 1, 1
-                    size_hint_y: 0.4
+                    padding: [dp(20), dp(15), dp(20), dp(10)]
+                    spacing: dp(12)
+
                     MDLabel:
-                        id: name_result_label
-                        text: 'Who is next?'
+                        text: 'RANDOM PICKER'
+                        font_style: 'H5'
+                        bold: True
+                        theme_text_color: 'Custom'
+                        text_color: 0.66, 0.33, 0.97, 1
+                        halign: 'center'
+                        size_hint_y: None
+                        height: dp(36)
+
+                    MDTextField:
+                        id: names_input
+                        hint_text: 'Enter names (one per line)'
+                        helper_text: 'One name per line'
+                        helper_text_mode: 'persistent'
+                        mode: "round"
+                        multiline: True
+                        size_hint_y: 0.3
+                        fill_color: 1, 1, 1, 1
+                        line_color_normal: 0.66, 0.33, 0.97, 0.4
+                        line_color_focus: 0.66, 0.33, 0.97, 1
+
+                    MDRaisedButton:
+                        text: 'LOAD LIST'
+                        size_hint_x: 1
+                        size_hint_y: None
+                        height: dp(48)
+                        md_bg_color: 0.66, 0.33, 0.97, 1
+                        shadow_color: 0.66, 0.33, 0.97, 0.3
+                        elevation: 3
+                        on_release: app.setup_names()
+
+                    MDSeparator:
+                        height: dp(1)
+                        color: 0.9, 0.92, 0.94, 1
+
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: 0.3
+
+                        Widget:
+                            MDLabel:
+                                id: name_result_label
+                                text: 'Who is next?'
+                                font_style: 'H4'
+                                halign: 'center'
+                                valign: 'middle'
+                                theme_text_color: 'Custom'
+                                text_color: 0.66, 0.33, 0.97, 1
+                                bold: True
+                                pos_hint: {"center_x": .5, "center_y": .6}
+
+                            MDLabel:
+                                id: name_status_label
+                                text: 'Waiting for names...'
+                                halign: 'center'
+                                theme_text_color: 'Secondary'
+                                size_hint_y: None
+                                height: dp(24)
+                                pos_hint: {"center_x": .5, "center_y": .25}
+
+                    MDFillRoundFlatButton:
+                        id: name_draw_btn
+                        text: '  PICK SOMEONE  '
+                        font_size: '18sp'
+                        size_hint_x: 1
+                        size_hint_y: None
+                        height: dp(52)
+                        disabled: True
+                        md_bg_color: 0.66, 0.33, 0.97, 1
+                        shadow_color: 0.66, 0.33, 0.97, 0.4
+                        elevation: 4
+                        on_release: app.start_draw_animation('name')
+
+            Screen:
+                name: 'tab_wheel'
+                md_bg_color: 0.96, 0.97, 0.98, 1
+
+                canvas.before:
+                    Color:
+                        rgba: 0.96, 0.97, 0.98, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    padding: [dp(15), dp(10), dp(15), dp(10)]
+                    spacing: dp(8)
+
+                    MDLabel:
+                        text: 'SPIN THE WHEEL'
+                        font_style: 'H5'
+                        bold: True
+                        theme_text_color: 'Custom'
+                        text_color: 0.18, 0.8, 0.44, 1
+                        halign: 'center'
+                        size_hint_y: None
+                        height: dp(36)
+
+                    MDTextField:
+                        id: wheel_input
+                        hint_text: 'Enter items (one per line)'
+                        helper_text: 'Minimum 2 items'
+                        helper_text_mode: 'persistent'
+                        mode: "round"
+                        multiline: True
+                        size_hint_y: 0.2
+                        fill_color: 1, 1, 1, 1
+                        line_color_normal: 0.18, 0.8, 0.44, 0.4
+                        line_color_focus: 0.18, 0.8, 0.44, 1
+
+                    MDFloatLayout:
+                        size_hint_y: 0.45
+
+                        RouletteGraphic:
+                            id: graphic_wheel
+                            size_hint: None, None
+                            size: dp(260), dp(260)
+                            pos_hint: {"center_x": .5, "center_y": .5}
+
+                        MDIcon:
+                            icon: "menu-down"
+                            font_size: "55sp"
+                            theme_text_color: "Custom"
+                            text_color: 0.1, 0.1, 0.1, 0.8
+                            pos_hint: {"center_x": .5, "center_y": .95}
+
+                    MDLabel:
+                        id: wheel_result_label
+                        text: 'TAP SPIN'
                         font_style: 'H4'
                         halign: 'center'
                         theme_text_color: 'Custom'
-                        text_color: 0.66, 0.33, 0.97, 1
+                        text_color: 0.18, 0.8, 0.44, 1
                         bold: True
+                        size_hint_y: None
+                        height: dp(36)
+
+                    MDFillRoundFlatButton:
+                        id: wheel_btn
+                        text: '  SPIN NOW!  '
+                        font_size: '20sp'
+                        size_hint_x: 1
+                        size_hint_y: None
+                        height: dp(54)
+                        md_bg_color: 0.18, 0.8, 0.44, 1
+                        shadow_color: 0.18, 0.8, 0.44, 0.4
+                        elevation: 4
+                        on_release: app.start_wheel()
+
+            Screen:
+                name: 'tab_team'
+                md_bg_color: 0.96, 0.97, 0.98, 1
+
+                canvas.before:
+                    Color:
+                        rgba: 0.96, 0.97, 0.98, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    padding: [dp(20), dp(15), dp(20), dp(10)]
+                    spacing: dp(12)
+
                     MDLabel:
-                        id: name_status_label
-                        text: 'Waiting for names...'
+                        text: 'TEAM SPLITTER'
+                        font_style: 'H5'
+                        bold: True
+                        theme_text_color: 'Custom'
+                        text_color: 0.9, 0.49, 0.13, 1
                         halign: 'center'
                         size_hint_y: None
-                        height: dp(30)
-                MDFillRoundFlatButton:
-                    id: name_draw_btn
-                    text: 'PICK SOMEONE'
-                    size_hint_x: 1
-                    size_hint_y: None
-                    height: dp(50)
-                    disabled: True
-                    md_bg_color: 0.66, 0.33, 0.97, 1
-                    on_release: app.start_draw_animation('name')
+                        height: dp(36)
 
-        MDBottomNavigationItem:
-            name: 'tab_wheel'
-            text: 'Wheel'
-            icon: 'sync-circle'
-            md_bg_color: 0.96, 0.97, 0.98, 1
-
-            MDBoxLayout:
-                orientation: 'vertical'
-                padding: dp(20)
-                spacing: dp(10)
-                md_bg_color: 0.96, 0.97, 0.98, 1
-                MDLabel:
-                    text: 'SPIN THE WHEEL'
-                    font_style: 'H5'
-                    bold: True
-                    theme_text_color: 'Custom'
-                    text_color: 0.18, 0.8, 0.44, 1
-                    halign: 'center'
-                    size_hint_y: None
-                    height: dp(30)
-                MDTextField:
-                    id: wheel_input
-                    hint_text: 'Enter items'
-                    helper_text: '(One item per line)'
-                    helper_text_mode: 'persistent'
-                    mode: "rectangle"
-                    multiline: True
-                    size_hint_y: 0.3
-                MDFloatLayout:
-                    size_hint_y: 0.5
-                    RouletteGraphic:
-                        id: graphic_wheel
-                        size_hint: None, None
-                        size: dp(260), dp(260)
-                        pos_hint: {"center_x": .5, "center_y": .5}
-                    MDIcon:
-                        icon: "menu-down"
-                        font_size: "60sp"
-                        theme_text_color: "Custom"
-                        text_color: 0.1, 0.1, 0.1, 1
-                        pos_hint: {"center_x": .5, "center_y": .95}
-                MDLabel:
-                    id: wheel_result_label
-                    text: 'TAP SPIN'
-                    font_style: 'H4'
-                    halign: 'center'
-                    theme_text_color: 'Custom'
-                    text_color: 0.18, 0.8, 0.44, 1
-                    bold: True
-                    size_hint_y: None
-                    height: dp(40)
-                MDFillRoundFlatButton:
-                    id: wheel_btn
-                    text: 'SPIN NOW!'
-                    font_size: '22sp'
-                    size_hint_x: 1
-                    size_hint_y: None
-                    height: dp(60)
-                    md_bg_color: 0.18, 0.8, 0.44, 1
-                    on_release: app.start_wheel()
-
-        MDBottomNavigationItem:
-            name: 'tab_team'
-            text: 'Teams'
-            icon: 'account-group'
-            md_bg_color: 0.96, 0.97, 0.98, 1
-
-            MDBoxLayout:
-                orientation: 'vertical'
-                padding: dp(20)
-                spacing: dp(15)
-                md_bg_color: 0.96, 0.97, 0.98, 1
-                MDLabel:
-                    text: 'TEAM SPLITTER'
-                    font_style: 'H5'
-                    bold: True
-                    theme_text_color: 'Custom'
-                    text_color: 0.9, 0.49, 0.13, 1
-                    halign: 'center'
-                    size_hint_y: None
-                    height: dp(30)
-                MDTextField:
-                    id: team_names_input
-                    hint_text: 'Enter player names'
-                    helper_text: '(One name per line)'
-                    helper_text_mode: 'persistent'
-                    mode: "rectangle"
-                    multiline: True
-                    size_hint_y: 0.4
-                MDBoxLayout:
-                    size_hint_y: None
-                    height: dp(60)
-                    spacing: dp(10)
                     MDTextField:
-                        id: team_count_input
-                        hint_text: 'Number of teams'
-                        input_filter: 'int'
-                        halign: 'center'
-                    MDFillRoundFlatButton:
-                        text: 'SPLIT TEAMS'
-                        size_hint_y: 1
-                        md_bg_color: 0.9, 0.49, 0.13, 1
-                        on_release: app.split_teams()
-                MDCard:
-                    padding: dp(15)
-                    radius: [10, 10, 10, 10]
-                    elevation: 1
-                    md_bg_color: 1, 1, 1, 1
+                        id: team_names_input
+                        hint_text: 'Enter player names (one per line)'
+                        helper_text: 'One name per line'
+                        helper_text_mode: 'persistent'
+                        mode: "round"
+                        multiline: True
+                        size_hint_y: 0.3
+                        fill_color: 1, 1, 1, 1
+                        line_color_normal: 0.9, 0.49, 0.13, 0.4
+                        line_color_focus: 0.9, 0.49, 0.13, 1
+
+                    MDBoxLayout:
+                        size_hint_y: None
+                        height: dp(54)
+                        spacing: dp(10)
+
+                        MDTextField:
+                            id: team_count_input
+                            hint_text: 'Number of teams'
+                            input_filter: 'int'
+                            halign: 'center'
+                            mode: "round"
+                            fill_color: 1, 1, 1, 1
+                            line_color_normal: 0.9, 0.49, 0.13, 0.4
+                            line_color_focus: 0.9, 0.49, 0.13, 1
+
+                        MDRaisedButton:
+                            text: 'SPLIT'
+                            size_hint_x: 0.3
+                            size_hint_y: 1
+                            md_bg_color: 0.9, 0.49, 0.13, 1
+                            shadow_color: 0.9, 0.49, 0.13, 0.3
+                            elevation: 3
+                            on_release: app.split_teams()
+
+                    MDCard:
+                        padding: dp(12)
+                        radius: [12, 12, 12, 12]
+                        elevation: 1
+                        size_hint_y: 0.55
+                        md_bg_color: 1, 1, 1, 1
+
+                        ScrollView:
+                            MDLabel:
+                                id: team_result_label
+                                text: 'Results will appear here...'
+                                size_hint_y: None
+                                height: self.texture_size[1]
+                                text_size: self.width, None
+                                theme_text_color: 'Secondary'
+
+        # ========== CUSTOM BOTTOM TAB BAR ==========
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(60)
+            md_bg_color: 1, 1, 1, 1
+            spacing: 0
+            padding: 0
+
+            canvas.before:
+                Color:
+                    rgba: 0.9, 0.92, 0.94, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.width, dp(1)
+                Color:
+                    rgba: 1, 1, 1, 1
+                Rectangle:
+                    pos: self.x, self.y + dp(1)
+                    size: self.width, self.height - dp(1)
+
+            MDBoxLayout:
+                id: tab_number_btn
+                orientation: 'vertical'
+                size_hint_x: 0.25
+                spacing: dp(2)
+                padding: [0, dp(6), 0, dp(4)]
+
+                MDIcon:
+                    id: tab_number_icon
+                    icon: 'numeric'
+                    font_size: '24sp'
+                    halign: 'center'
                     size_hint_y: 0.6
-                    ScrollView:
-                        MDLabel:
-                            id: team_result_label
-                            text: 'Results will appear here...'
-                            size_hint_y: None
-                            height: self.texture_size[1]
-                            text_size: self.width, None
+                    theme_text_color: 'Custom'
+                    text_color: app._tab_active_color
+                    on_release: app.switch_tab('tab_number')
+
+                MDLabel:
+                    text: 'Numbers'
+                    font_size: '10sp'
+                    halign: 'center'
+                    size_hint_y: 0.4
+                    theme_text_color: 'Custom'
+                    text_color: app._tab_active_color
+                    on_release: app.switch_tab('tab_number')
+
+            MDBoxLayout:
+                id: tab_name_btn
+                orientation: 'vertical'
+                size_hint_x: 0.25
+                spacing: dp(2)
+                padding: [0, dp(6), 0, dp(4)]
+
+                MDIcon:
+                    id: tab_name_icon
+                    icon: 'account-star'
+                    font_size: '24sp'
+                    halign: 'center'
+                    size_hint_y: 0.6
+                    theme_text_color: 'Custom'
+                    text_color: app._tab_inactive_color
+                    on_release: app.switch_tab('tab_name')
+
+                MDLabel:
+                    text: 'Names'
+                    font_size: '10sp'
+                    halign: 'center'
+                    size_hint_y: 0.4
+                    theme_text_color: 'Custom'
+                    text_color: app._tab_inactive_color
+                    on_release: app.switch_tab('tab_name')
+
+            MDBoxLayout:
+                id: tab_wheel_btn
+                orientation: 'vertical'
+                size_hint_x: 0.25
+                spacing: dp(2)
+                padding: [0, dp(6), 0, dp(4)]
+
+                MDIcon:
+                    id: tab_wheel_icon
+                    icon: 'sync-circle'
+                    font_size: '24sp'
+                    halign: 'center'
+                    size_hint_y: 0.6
+                    theme_text_color: 'Custom'
+                    text_color: app._tab_inactive_color
+                    on_release: app.switch_tab('tab_wheel')
+
+                MDLabel:
+                    text: 'Wheel'
+                    font_size: '10sp'
+                    halign: 'center'
+                    size_hint_y: 0.4
+                    theme_text_color: 'Custom'
+                    text_color: app._tab_inactive_color
+                    on_release: app.switch_tab('tab_wheel')
+
+            MDBoxLayout:
+                id: tab_team_btn
+                orientation: 'vertical'
+                size_hint_x: 0.25
+                spacing: dp(2)
+                padding: [0, dp(6), 0, dp(4)]
+
+                MDIcon:
+                    id: tab_team_icon
+                    icon: 'account-group'
+                    font_size: '24sp'
+                    halign: 'center'
+                    size_hint_y: 0.6
+                    theme_text_color: 'Custom'
+                    text_color: app._tab_inactive_color
+                    on_release: app.switch_tab('tab_team')
+
+                MDLabel:
+                    text: 'Teams'
+                    font_size: '10sp'
+                    halign: 'center'
+                    size_hint_y: 0.4
+                    theme_text_color: 'Custom'
+                    text_color: app._tab_inactive_color
+                    on_release: app.switch_tab('tab_team')
 '''
-Builder.load_string(main_screen_kv)
+Builder.load_string(main_kv)
 
 
 class MainScreen(MDScreen):
@@ -461,13 +681,21 @@ class MainScreen(MDScreen):
 
 
 # ==========================================
-# MAIN APP - OPTIMIZED
+# MAIN APP
 # ==========================================
 class StevenRandomApp(MDApp):
     sm = ObjectProperty(None)
     _main_ids = None
     _anim_clock = None
     _sounds_loaded = False
+    _tab_colors = {
+        'tab_number': (0.2, 0.5, 0.95, 1),
+        'tab_name': (0.66, 0.33, 0.97, 1),
+        'tab_wheel': (0.18, 0.8, 0.44, 1),
+        'tab_team': (0.9, 0.49, 0.13, 1),
+    }
+    _tab_active_color = (0.5, 0.5, 0.5, 1)
+    _tab_inactive_color = (0.7, 0.72, 0.75, 1)
 
     available_numbers = []
     drawn_numbers = []
@@ -480,6 +708,7 @@ class StevenRandomApp(MDApp):
     snd_click = None
     snd_win = None
     snd_spin = None
+    no_trans = NoTransition()
 
     def build(self):
         self.theme_cls.primary_palette = "Blue"
@@ -495,13 +724,46 @@ class StevenRandomApp(MDApp):
     def _ensure_sounds(self):
         if self._sounds_loaded:
             return
-        self.snd_click = SoundLoader.load('click.ogg')
-        self.snd_win = SoundLoader.load('win.ogg')
-        self.snd_spin = SoundLoader.load('spin.ogg')
+        click_path = self._find_file('click.ogg')
+        win_path = self._find_file('win.ogg')
+        spin_path = self._find_file('spin.ogg')
+        self.snd_click = SoundLoader.load(click_path) if click_path else None
+        self.snd_win = SoundLoader.load(win_path) if win_path else None
+        self.snd_spin = SoundLoader.load(spin_path) if spin_path else None
         self._sounds_loaded = True
+
+    def _find_file(self, filename):
+        if os.path.exists(filename):
+            return filename
+        for ext in ['.ogg', '.mp3', '.wav']:
+            base = filename.rsplit('.', 1)[0]
+            path = base + ext
+            if os.path.exists(path):
+                return path
+        return None
 
     def finish_splash(self):
         self.sm.current = 'main_app'
+        Clock.schedule_once(lambda dt: self._post_init(), 0.1)
+
+    def _post_init(self):
+        ids = self._get_ids()
+        self.no_trans = NoTransition()
+        ids.content_sm.transition = self.no_trans
+        self.switch_tab('tab_number')
+
+    def switch_tab(self, tab_name):
+        ids = self._get_ids()
+        ids.content_sm.current = tab_name
+
+        for name, color in self._tab_colors.items():
+            icon = ids.get(f'{name}_icon')
+            label = ids.get(f'{name}_icon')
+            if icon:
+                icon.text_color = color if name == tab_name else self._tab_inactive_color
+            lbl_widget = ids.get(f'{name}_btn').children[1]
+            if lbl_widget and hasattr(lbl_widget, 'text_color'):
+                lbl_widget.text_color = color if name == tab_name else self._tab_inactive_color
 
     def _get_ids(self):
         if self._main_ids is None:
@@ -677,7 +939,7 @@ class StevenRandomApp(MDApp):
 
             result_text = ""
             for i in range(team_count):
-                result_text += f"[b]TEAM {i + 1}:[/b]\n"
+                result_text += f"[color=#3377ff][b]TEAM {i + 1}:[/b][/color]\n"
                 result_text += " • " + "\n • ".join(teams[i]) + "\n\n"
 
             ids.team_result_label.markup = True
